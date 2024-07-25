@@ -1,0 +1,25 @@
+#!/bin/bash
+# This script is intended to update the application.
+
+set -e
+
+echo "Updating application..."
+
+# Update Ruby dependencies
+echo "Updating Ruby dependencies..."
+bundle install
+
+# Run database migrations
+echo "Running database migrations..."
+bundle exec rails db:migrate
+
+# Clear caches
+echo "Clearing caches..."
+bundle exec rails tmp:clear
+bundle exec rails log:clear
+
+# Restart the application server (assuming you're using Puma)
+echo "Restarting the application server..."
+bundle exec pumactl restart
+
+echo "Update completed successfully!"
