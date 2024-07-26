@@ -18,7 +18,7 @@ rbenv local $(cat .ruby-version)
 echo "Using Ruby version: $(ruby -v)"
 
 # Install bundler if not already installed
-gem install bundler -v 2.4.12
+gem install bundler
 
 # Install Ruby dependencies
 echo "Installing Ruby dependencies..."
