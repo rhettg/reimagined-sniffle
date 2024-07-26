@@ -1,0 +1,27 @@
+#!/bin/bash
+# This script is intended to install dependencies.
+
+set -e
+
+echo "Starting bootstrap process..."
+
+# Ensure the correct Ruby version is used
+if ! command -v rbenv &> /dev/null; then
+    echo "rbenv not found. Please install rbenv and try again."
+    exit 1
+fi
+
+# Install the Ruby version specified in the .ruby-version file
+rbenv install -s
+rbenv local $(cat .ruby-version)
+
+echo "Using Ruby version: $(ruby -v)"
+
+# Install bundler if not already installed
+gem install bundler
+
+# Install Ruby dependencies
+echo "Installing Ruby dependencies..."
+bundle install
+
+echo "Bootstrap process completed successfully."

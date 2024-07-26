@@ -1,0 +1,17 @@
+#!/bin/bash
+# This script is intended to set up the database.
+set -e
+
+echo "Running bootstrap script..."
+./script/bootstrap
+
+echo "Creating database..."
+bundle exec rails db:create
+
+echo "Running database migrations..."
+bundle exec rails db:migrate
+
+echo "Seeding the database..."
+bundle exec rails db:seed
+
+echo "Setup complete!"
