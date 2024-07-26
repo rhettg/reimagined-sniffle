@@ -11,8 +11,9 @@ if ! command -v rbenv &> /dev/null; then
     exit 1
 fi
 
-rbenv install 3.2.0 -s
-rbenv local 3.2.0
+# Install the Ruby version specified in the .ruby-version file
+rbenv install -s
+rbenv local $(cat .ruby-version)
 
 echo "Using Ruby version: $(ruby -v)"
 
@@ -22,10 +23,5 @@ gem install bundler -v 2.4.12
 # Install Ruby dependencies
 echo "Installing Ruby dependencies..."
 bundle install
-
-# Install any system-level dependencies (example: for PostgreSQL)
-echo "Installing system dependencies..."
-sudo apt-get update
-sudo apt-get install -y postgresql postgresql-contrib libpq-dev
 
 echo "Bootstrap process completed successfully."

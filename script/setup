@@ -3,7 +3,7 @@
 set -e
 
 echo "Running bootstrap script..."
-./scripts/bootstrap
+./script/bootstrap
 
 echo "Creating database..."
 bundle exec rails db:create
