@@ -23,6 +23,7 @@ m = Module.new do
 
   def cli_arg_version
     return unless invoked_as_script? && 'update'.start_with?(ARGV.first || ' ')
+
     find_version_in_args
   end
 
@@ -89,11 +90,16 @@ m = Module.new do
     return if gem_error.nil?
 
     require_error = activation_error_handling { require 'bundler/version' }
-    return if require_error.nil? && Gem::Requirement.new(bundler_requirement).satisfied_by?(Gem::Version.new(Bundler::VERSION))
+    return if require_error.nil? && bundler_version_satisfied?
 
     warn "Activating bundler (#{bundler_requirement}) failed:\n#{gem_error.message}\n\n" \
-         "To install the version of bundler this project requires, run `gem install bundler -v '#{bundler_requirement}'`"
+         "To install the version of bundler this project requires, run " \
+         "`gem install bundler -v '#{bundler_requirement}'`"
     exit 42
+  end
+
+  def bundler_version_satisfied?
+    Gem::Requirement.new(bundler_requirement).satisfied_by?(Gem::Version.new(Bundler::VERSION))
   end
 
   def activation_error_handling
