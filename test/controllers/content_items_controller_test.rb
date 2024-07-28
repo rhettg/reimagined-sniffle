@@ -10,13 +10,20 @@ class ContentItemsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test 'should get index' do
+    # Create an image content item
+    Image.create!(title: "Test Image")
+
     get content_items_url, as: :json
     assert_response :success
     assert_equal 'application/json', @response.media_type
+
     json_response = JSON.parse(@response.body)
     assert_includes json_response.map { |item| item['type'] }, 'Image'
     assert_includes json_response.map { |item| item['type'] }, 'Link'
     assert_includes json_response.map { |item| item['type'] }, 'Note'
+
+    # Verify that the created image is in the response
+    assert json_response.any? { |item| item['type'] == 'Image' && item['title'] == 'Test Image' }
   end
 
   test 'should get new' do
