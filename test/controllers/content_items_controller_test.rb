@@ -107,11 +107,12 @@ class ContentItemsControllerTest < ActionDispatch::IntegrationTest
 
   test 'should create image with file attachment' do
     assert_difference('ContentItem.count') do
+      file = fixture_file_upload(Rails.root.join('test', 'fixtures', 'files', 'test_image.jpg'), 'image/jpeg')
       post content_items_url, params: {
         content_item: {
           type: 'Image',
           title: 'Test Image with File',
-          file: fixture_file_upload('test_image.jpg', 'image/jpeg')
+          file: file
         }
       }, as: :json
       assert_response :created
@@ -121,5 +122,10 @@ class ContentItemsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 'Image', json_response['type']
     assert_equal 'Test Image with File', json_response['title']
     assert_not_nil json_response['file_url']
+
+    created_image = ContentItem.find(json_response['id'])
+    assert created_image.file.attached?
+    assert_equal 'image/jpeg', created_image.file.content_type
+    assert_equal 'test_image.jpg', created_image.file.filename.to_s
   end
 end
