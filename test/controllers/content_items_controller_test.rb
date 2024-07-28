@@ -1,21 +1,23 @@
-require "test_helper"
+# frozen_string_literal: true
+
+require 'test_helper'
 
 class ContentItemsControllerTest < ActionDispatch::IntegrationTest
   setup do
     @content_item = ContentItem.create!(type: 'ContentItem')
   end
 
-  test "should get index" do
+  test 'should get index' do
     get content_items_url, as: :json
     assert_response :success
   end
 
-  test "should get new" do
+  test 'should get new' do
     get new_content_item_url, as: :json
     assert_response :success
   end
 
-  test "should create content_item" do
+  test 'should create content_item' do
     assert_difference('ContentItem.count') do
       post content_items_url, params: { content_item: { type: 'ContentItem' } }, as: :json
     end
@@ -23,22 +25,22 @@ class ContentItemsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to content_item_url(ContentItem.last)
   end
 
-  test "should show content_item" do
+  test 'should show content_item' do
     get content_item_url(@content_item), as: :json
     assert_response :success
   end
 
-  test "should get edit" do
+  test 'should get edit' do
     get edit_content_item_url(@content_item), as: :json
     assert_response :success
   end
 
-  test "should update content_item" do
+  test 'should update content_item' do
     patch content_item_url(@content_item), params: { content_item: { type: 'ContentItem' } }, as: :json
     assert_redirected_to content_item_url(@content_item)
   end
 
-  test "should destroy content_item" do
+  test 'should destroy content_item' do
     assert_difference('ContentItem.count', -1) do
       delete content_item_url(@content_item), as: :json
     end
@@ -49,11 +51,11 @@ class ContentItemsControllerTest < ActionDispatch::IntegrationTest
   private
 
   def content_items_url
-    "/content_items"
+    '/content_items'
   end
 
   def new_content_item_url
-    "/content_items/new"
+    '/content_items/new'
   end
 
   def edit_content_item_url(content_item)

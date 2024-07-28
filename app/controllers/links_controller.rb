@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class LinksController < ApplicationController
   before_action :set_link, only: %i[show edit update destroy]
 
@@ -7,8 +9,7 @@ class LinksController < ApplicationController
   end
 
   # GET /links/1
-  def show
-  end
+  def show; end
 
   # GET /links/new
   def new
@@ -16,8 +17,7 @@ class LinksController < ApplicationController
   end
 
   # GET /links/1/edit
-  def edit
-  end
+  def edit; end
 
   # POST /links
   def create

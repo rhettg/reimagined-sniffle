@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class TagsController < ApplicationController
   before_action :set_tag, only: %i[show edit update destroy]
 
@@ -7,8 +9,7 @@ class TagsController < ApplicationController
   end
 
   # GET /tags/1
-  def show
-  end
+  def show; end
 
   # GET /tags/new
   def new
@@ -16,8 +17,7 @@ class TagsController < ApplicationController
   end
 
   # GET /tags/1/edit
-  def edit
-  end
+  def edit; end
 
   # POST /tags
   def create

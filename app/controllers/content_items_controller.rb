@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class ContentItemsController < ApplicationController
   before_action :set_content_item, only: %i[show edit update destroy]
 
@@ -7,8 +9,7 @@ class ContentItemsController < ApplicationController
   end
 
   # GET /content_items/1
-  def show
-  end
+  def show; end
 
   # GET /content_items/new
   def new
@@ -16,8 +17,7 @@ class ContentItemsController < ApplicationController
   end
 
   # GET /content_items/1/edit
-  def edit
-  end
+  def edit; end
 
   # POST /content_items
   def create
