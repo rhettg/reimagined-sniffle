@@ -1,0 +1,12 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+content_items_one:
+  type: Note
+
+content_items_two:
+  type: Image
+  title: "Sample title for Image"
+
+content_items_three:
+  type: Link
+  url: "http://example.com"
