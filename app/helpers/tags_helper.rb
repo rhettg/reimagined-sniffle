@@ -1,4 +1,3 @@
-# frozen_string_literal: true
-
+# Helper methods for tags.
 module TagsHelper
-end
+

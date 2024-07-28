@@ -1,7 +1,3 @@
-# frozen_string_literal: true
-
+# Migration to create images table.
 class CreateImages < ActiveRecord::Migration[7.1]
-  def change
-    create_table :images, &:timestamps
-  end
-end
+
