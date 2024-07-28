@@ -11,7 +11,9 @@ class ContentItemsController < ApplicationController
   end
 
   # GET /content_items/1
-  def show; end
+  def show
+    render json: @content_item.as_json.merge(type: @content_item.type), status: :ok
+  end
 
   # GET /content_items/new
   def new
