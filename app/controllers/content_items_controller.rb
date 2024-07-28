@@ -28,7 +28,7 @@ class ContentItemsController < ApplicationController
 
     if @content_item.save
       @content_item.file.attach(params[:content_item][:file]) if params[:content_item][:file].is_a?(ActionDispatch::Http::UploadedFile)
-      render json: @content_item, status: :created, location: @content_item
+      render json: @content_item.as_json(include: :type), status: :created, location: @content_item
     else
       render json: { errors: @content_item.errors }, status: :unprocessable_entity
     end
@@ -38,7 +38,7 @@ class ContentItemsController < ApplicationController
   def update
     if @content_item.update(content_item_params)
       @content_item.file.attach(params[:content_item][:file]) if params[:content_item][:file].is_a?(ActionDispatch::Http::UploadedFile)
-      render json: @content_item, status: :ok, location: @content_item
+      render json: @content_item.as_json(include: :type), status: :ok, location: @content_item
     else
       render json: { errors: @content_item.errors }, status: :unprocessable_entity
     end
