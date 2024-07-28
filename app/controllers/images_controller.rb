@@ -26,7 +26,7 @@ class ImagesController < ApplicationController
 
     if @image.save
       @image.file.attach(params[:image][:file]) if params[:image][:file].present?
-      redirect_to @image, notice: 'Image was successfully created.'
+      render :show, status: :created, location: @image
     else
       render :new
     end
@@ -36,7 +36,7 @@ class ImagesController < ApplicationController
   def update
     if @image.update(image_params)
       @image.file.attach(params[:image][:file]) if params[:image][:file].present?
-      redirect_to @image, notice: 'Image was successfully updated.'
+      render :show, status: :ok, location: @image
     else
       render :edit
     end
