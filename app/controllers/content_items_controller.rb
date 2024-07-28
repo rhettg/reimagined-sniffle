@@ -7,6 +7,7 @@ class ContentItemsController < ApplicationController
   # GET /content_items
   def index
     @content_items = ContentItem.all
+    render json: @content_items
   end
 
   # GET /content_items/1
@@ -22,7 +23,8 @@ class ContentItemsController < ApplicationController
 
   # POST /content_items
   def create
-    @content_item = ContentItem.new(content_item_params)
+    content_item_class = content_item_params[:type].constantize
+    @content_item = content_item_class.new(content_item_params.except(:type))
 
     if @content_item.save
       @content_item.file.attach(params[:content_item][:file]) if params[:content_item][:file].is_a?(ActionDispatch::Http::UploadedFile)
@@ -60,6 +62,6 @@ class ContentItemsController < ApplicationController
 
   # Only allow a list of trusted parameters through.
   def content_item_params
-    params.require(:content_item).permit(:type, :title, :url, :text, :file)
+    params.require(:content_item).permit(:type, :title, :url, :content, :file)
   end
 end
