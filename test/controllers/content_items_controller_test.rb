@@ -129,7 +129,13 @@ class ContentItemsControllerTest < ActionDispatch::IntegrationTest
     json_response = JSON.parse(@response.body)
     assert_equal 'Image', json_response['type']
     assert_equal 'Test Image with File', json_response['title']
+<<<<<<< HEAD
     assert_not_nil json_response['file_url'], "file_url should be present in the response"
+||||||| 2bab7ae (Fix assertions in content items controller test and ensure image items are included in index)
+    assert_not_nil json_response['file_url']
+=======
+    assert_present json_response['file_url']
+>>>>>>> parent of 2bab7ae (Fix assertions in content items controller test and ensure image items are included in index)
 
     created_image = ContentItem.find(json_response['id'])
     puts "Created image attributes: #{created_image.attributes}"
