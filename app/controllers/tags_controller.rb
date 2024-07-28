@@ -19,7 +19,7 @@ class TagsController < ApplicationController
   def create
     @tag = Tag.new(tag_params)
     if @tag.save
-      render json: @tag, status: :created, location: @tag
+      redirect_to tags_url, notice: 'Tag was successfully created.'
     else
       render json: @tag.errors, status: :unprocessable_entity
     end
@@ -38,7 +38,7 @@ class TagsController < ApplicationController
   # PATCH/PUT /tags/:id
   def update
     if @tag.update(tag_params)
-      render json: @tag, status: :ok, location: @tag
+      redirect_to tags_url, notice: 'Tag was successfully updated.'
     else
       render json: @tag.errors, status: :unprocessable_entity
     end
@@ -47,7 +47,7 @@ class TagsController < ApplicationController
   # DELETE /tags/:id
   def destroy
     @tag.destroy
-    head :no_content
+    redirect_to tags_url, notice: 'Tag was successfully destroyed.'
   end
 
   private
