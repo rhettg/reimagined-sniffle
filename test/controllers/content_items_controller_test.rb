@@ -93,12 +93,14 @@ class ContentItemsControllerTest < ActionDispatch::IntegrationTest
   test 'should handle validation errors for Note' do
     assert_no_difference('ContentItem.count') do
       post content_items_url, params: { content_item: { type: 'Note', content: '' } }, as: :json
+      assert_response :unprocessable_entity
     end
 
-    assert_response :unprocessable_entity
     assert_equal 'application/json', @response.media_type
 
     json_response = JSON.parse(@response.body)
+    assert_kind_of Hash, json_response
+    assert_includes json_response.keys, 'errors'
     assert_includes json_response['errors'].keys, 'content'
     assert_includes json_response['errors']['content'], "can't be blank"
   end
@@ -112,8 +114,9 @@ class ContentItemsControllerTest < ActionDispatch::IntegrationTest
           file: fixture_file_upload('test_image.jpg', 'image/jpeg')
         }
       }, as: :json
+      assert_response :created
     end
-    assert_response :created
+
     json_response = JSON.parse(@response.body)
     assert_equal 'Image', json_response['type']
     assert_equal 'Test Image with File', json_response['title']
