@@ -5,3 +5,6 @@ content_items_one:
 
 content_items_two:
   type: ContentItem
+
+content_items_three:
+  type: ContentItem
