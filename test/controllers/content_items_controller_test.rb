@@ -123,14 +123,16 @@ class ContentItemsControllerTest < ActionDispatch::IntegrationTest
         }
       }, as: :json
       assert_response :created
+      puts "Response body: #{response.body}"
     end
 
     json_response = JSON.parse(@response.body)
     assert_equal 'Image', json_response['type']
     assert_equal 'Test Image with File', json_response['title']
-    assert_not_nil json_response['file_url']
+    assert_present json_response['file_url']
 
     created_image = ContentItem.find(json_response['id'])
+    puts "Created image attributes: #{created_image.attributes}"
     assert created_image.file.attached?
     assert_equal 'image/jpeg', created_image.file.content_type
     assert_equal 'test_image.jpg', created_image.file.filename.to_s
