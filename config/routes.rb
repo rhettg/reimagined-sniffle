@@ -11,8 +11,8 @@ Rails.application.routes.draw do
   # root "posts#index"
 
   resources :content_items
-  resources :images
-  resources :links
-  resources :notes
+  resources :images, only: [:create]
+  resources :links, only: [:create]
+  resources :notes, only: [:create]
   resources :tags
 end

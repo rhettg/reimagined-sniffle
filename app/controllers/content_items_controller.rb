@@ -2,7 +2,7 @@
 
 # Controller for managing content items.
 class ContentItemsController < ApplicationController
-  before_action :set_content_item, only: %i[show edit destroy]
+  before_action :set_content_item, only: %i[show edit update destroy]
 
   # GET /content_items
   def index
@@ -119,7 +119,13 @@ class ContentItemsController < ApplicationController
 
   # Use callbacks to share common setup or constraints between actions.
   def set_content_item
-    @content_item = ContentItem.find(params[:id])
+    Rails.logger.debug "Attempting to find content item with id: #{params[:id]}"
+    @content_item = ContentItem.find_by(id: params[:id])
+    if @content_item
+      Rails.logger.debug "Content item found: #{@content_item.inspect}"
+    else
+      Rails.logger.error "Content item not found for id: #{params[:id]}"
+    end
   end
 
   # Only allow a list of trusted parameters through.
