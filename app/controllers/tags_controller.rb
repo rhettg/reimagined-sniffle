@@ -19,7 +19,7 @@ class TagsController < ApplicationController
   def create
     @tag = Tag.new(tag_params)
     if @tag.save
-      redirect_to tags_url, notice: 'Tag was successfully created.'
+      redirect_to @tag, notice: 'Tag was successfully created.'
     else
       render json: @tag.errors, status: :unprocessable_entity
     end
@@ -38,7 +38,7 @@ class TagsController < ApplicationController
   # PATCH/PUT /tags/:id
   def update
     if @tag.update(tag_params)
-      redirect_to tags_url, notice: 'Tag was successfully updated.'
+      redirect_to @tag, notice: 'Tag was successfully updated.'
     else
       render json: @tag.errors, status: :unprocessable_entity
     end
