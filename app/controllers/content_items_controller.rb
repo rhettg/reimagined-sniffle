@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# Controller for managing content items.
 class ContentItemsController < ApplicationController
   before_action :set_content_item, only: %i[show edit update destroy]
 
