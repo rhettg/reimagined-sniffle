@@ -25,6 +25,7 @@ class ImagesController < ApplicationController
     @image = Image.new(image_params)
 
     if @image.save
+      @image.file.attach(params[:image][:file]) if params[:image][:file].present?
       redirect_to @image, notice: 'Image was successfully created.'
     else
       render :new
@@ -34,6 +35,7 @@ class ImagesController < ApplicationController
   # PATCH/PUT /images/1
   def update
     if @image.update(image_params)
+      @image.file.attach(params[:image][:file]) if params[:image][:file].present?
       redirect_to @image, notice: 'Image was successfully updated.'
     else
       render :edit
@@ -43,7 +45,7 @@ class ImagesController < ApplicationController
   # DELETE /images/1
   def destroy
     @image.destroy
-    redirect_to images_url, notice: 'Image was successfully destroyed.'
+    head :no_content
   end
 
   private
@@ -55,6 +57,6 @@ class ImagesController < ApplicationController
 
   # Only allow a list of trusted parameters through.
   def image_params
-    params.require(:image).permit(:title, :file)
+    params.require(:image).permit(:title)
   end
 end
