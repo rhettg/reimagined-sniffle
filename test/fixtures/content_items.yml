@@ -1,7 +1,7 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
-one:
-  type: 
+content_items_one:
+  type: ContentItem
 
-two:
-  type: 
+content_items_two:
+  type: ContentItem

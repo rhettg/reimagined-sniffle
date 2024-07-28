@@ -4,19 +4,23 @@ class ImagesController < ApplicationController
   # GET /images
   def index
     @images = Image.all
+    render json: @images
   end
 
   # GET /images/1
   def show
+    render json: @image
   end
 
   # GET /images/new
   def new
     @image = Image.new
+    render json: @image
   end
 
   # GET /images/1/edit
   def edit
+    render json: @image
   end
 
   # POST /images
@@ -24,25 +28,25 @@ class ImagesController < ApplicationController
     @image = Image.new(image_params)
 
     if @image.save
-      redirect_to @image, notice: 'Image was successfully created.'
+      render json: @image, status: :created, location: @image
     else
-      render :new
+      render json: @image.errors, status: :unprocessable_entity
     end
   end
 
   # PATCH/PUT /images/1
   def update
     if @image.update(image_params)
-      redirect_to @image, notice: 'Image was successfully updated.'
+      render json: @image, status: :ok, location: @image
     else
-      render :edit
+      render json: @image.errors, status: :unprocessable_entity
     end
   end
 
   # DELETE /images/1
   def destroy
     @image.destroy
-    redirect_to images_url, notice: 'Image was successfully destroyed.'
+    head :no_content
   end
 
   private

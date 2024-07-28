@@ -41,8 +41,11 @@ class ContentItemsController < ApplicationController
 
   # DELETE /content_items/1
   def destroy
-    @content_item.destroy
-    redirect_to content_items_url, notice: 'Content item was successfully destroyed.'
+    if @content_item.destroy
+      head :no_content
+    else
+      redirect_to content_items_url, alert: 'Cannot delete content item because it is referenced by other records.'
+    end
   end
 
   private

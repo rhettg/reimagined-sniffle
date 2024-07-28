@@ -1,7 +1,10 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
-one:
-  text: MyText
+notes_one:
+  text: "Important Meeting Notes: Discussed project timeline and assigned tasks to team members."
 
-two:
-  text: MyText
+notes_two:
+  text: "Shopping List: Milk, eggs, bread, and vegetables for the week."
+
+notes_three:
+  text: "Daily Journal: Today was a productive day with several tasks completed."
