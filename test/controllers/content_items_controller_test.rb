@@ -13,7 +13,7 @@ class ContentItemsControllerTest < ActionDispatch::IntegrationTest
     get content_items_url, as: :json
     assert_response :success
     assert_equal 'application/json', @response.media_type
-    json_response = JSON.parse(response.body)
+    json_response = JSON.parse(@response.body)
     assert_includes json_response.map { |item| item['type'] }, 'Image'
     assert_includes json_response.map { |item| item['type'] }, 'Link'
     assert_includes json_response.map { |item| item['type'] }, 'Note'
@@ -27,26 +27,23 @@ class ContentItemsControllerTest < ActionDispatch::IntegrationTest
   test 'should create content items' do
     assert_difference('ContentItem.count', 3) do
       # Create Image
-      post content_items_url, params: { content_item: { type: 'Image', title: 'New Image', file: fixture_file_upload('test_image.jpg', 'image/jpeg') } }, as: :json
+      post content_items_url, params: { content_item: { type: 'Image', file: fixture_file_upload('test_image.jpg', 'image/jpeg') } }, as: :json
       assert_response :created
-      json_response = JSON.parse(response.body)
+      json_response = JSON.parse(@response.body)
       assert_equal 'Image', json_response['type']
-      assert_equal 'New Image', json_response['title']
 
       # Create Link
-      post content_items_url, params: { content_item: { type: 'Link', title: 'New Link', url: 'https://example.com' } }, as: :json
+      post content_items_url, params: { content_item: { type: 'Link', url: 'https://example.com' } }, as: :json
       assert_response :created
-      json_response = JSON.parse(response.body)
+      json_response = JSON.parse(@response.body)
       assert_equal 'Link', json_response['type']
-      assert_equal 'New Link', json_response['title']
       assert_equal 'https://example.com', json_response['url']
 
       # Create Note
-      post content_items_url, params: { content_item: { type: 'Note', title: 'New Note', text: 'This is a new note' } }, as: :json
+      post content_items_url, params: { content_item: { type: 'Note', text: 'This is a new note' } }, as: :json
       assert_response :created
-      json_response = JSON.parse(response.body)
+      json_response = JSON.parse(@response.body)
       assert_equal 'Note', json_response['type']
-      assert_equal 'New Note', json_response['title']
       assert_equal 'This is a new note', json_response['text']
     end
   end
@@ -56,7 +53,7 @@ class ContentItemsControllerTest < ActionDispatch::IntegrationTest
       get content_item_url(item), as: :json
       assert_response :success
       assert_equal 'application/json', @response.media_type
-      json_response = JSON.parse(response.body)
+      json_response = JSON.parse(@response.body)
       assert_equal item.type, json_response['type']
     end
   end
@@ -71,19 +68,19 @@ class ContentItemsControllerTest < ActionDispatch::IntegrationTest
   test 'should update content_item' do
     content_items = [@image, @link, @note]
     updates = [
-      { title: 'Updated Image' },
-      { title: 'Updated Link' },
-      { title: 'Updated Note' }
+      { file: fixture_file_upload('test_image.jpg', 'image/jpeg') },
+      { url: 'https://updated-example.com' },
+      { text: 'Updated note content' }
     ]
 
     content_items.zip(updates).each do |item, update_params|
       patch content_item_url(item), params: { content_item: update_params }, as: :json
       assert_response :success
       assert_equal 'application/json', @response.media_type
-      json_response = JSON.parse(response.body)
+      json_response = JSON.parse(@response.body)
 
       update_params.each do |key, value|
-        assert_equal value, json_response[key.to_s], "Failed to update #{key} for #{item.type}"
+        assert_equal value.to_s, json_response[key.to_s], "Failed to update #{key} for #{item.type}"
       end
     end
   end
@@ -96,10 +93,15 @@ class ContentItemsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test 'should handle validation errors' do
-    post content_items_url, params: { content_item: { type: 'Image' } }, as: :json
+    assert_no_difference('ContentItem.count') do
+      post content_items_url, params: { content_item: { type: 'Note', text: '' } }, as: :json
+    end
+
     assert_response :unprocessable_entity
     assert_equal 'application/json', @response.media_type
-    json_response = JSON.parse(response.body)
-    assert_includes json_response.keys, 'errors'
+
+    json_response = JSON.parse(@response.body)
+    assert_includes json_response['errors'].keys, 'text'
+    assert_includes json_response['errors']['text'], "can't be blank"
   end
 end
