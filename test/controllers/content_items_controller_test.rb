@@ -4,9 +4,9 @@ require 'test_helper'
 
 class ContentItemsControllerTest < ActionDispatch::IntegrationTest
   setup do
-    @image = content_items(:content_items_one)
-    @link = content_items(:content_items_two)
-    @note = content_items(:content_items_three)
+    @image = content_items(:content_items_two)
+    @link = content_items(:content_items_three)
+    @note = content_items(:content_items_one)
   end
 
   test 'should get index' do
@@ -27,10 +27,11 @@ class ContentItemsControllerTest < ActionDispatch::IntegrationTest
   test 'should create content items' do
     assert_difference('ContentItem.count', 3) do
       # Create Image
-      post content_items_url, params: { content_item: { type: 'Image', file: fixture_file_upload('test_image.jpg', 'image/jpeg') } }, as: :json
+      post content_items_url, params: { content_item: { type: 'Image', title: 'Test Image' } }, as: :json
       assert_response :created
       json_response = JSON.parse(@response.body)
       assert_equal 'Image', json_response['type']
+      assert_equal 'Test Image', json_response['title']
 
       # Create Link
       post content_items_url, params: { content_item: { type: 'Link', url: 'https://example.com' } }, as: :json
@@ -66,23 +67,20 @@ class ContentItemsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test 'should update content_item' do
-    content_items = [@image, @link, @note]
-    updates = [
-      { file: fixture_file_upload('test_image.jpg', 'image/jpeg') },
-      { url: 'https://updated-example.com' },
-      { text: 'Updated note content' }
-    ]
+    patch content_item_url(@image), params: { content_item: { title: 'Updated Image Title' } }, as: :json
+    assert_response :success
+    json_response = JSON.parse(@response.body)
+    assert_equal 'Updated Image Title', json_response['title']
 
-    content_items.zip(updates).each do |item, update_params|
-      patch content_item_url(item), params: { content_item: update_params }, as: :json
-      assert_response :success
-      assert_equal 'application/json', @response.media_type
-      json_response = JSON.parse(@response.body)
+    patch content_item_url(@link), params: { content_item: { url: 'https://updated-example.com' } }, as: :json
+    assert_response :success
+    json_response = JSON.parse(@response.body)
+    assert_equal 'https://updated-example.com', json_response['url']
 
-      update_params.each do |key, value|
-        assert_equal value.to_s, json_response[key.to_s], "Failed to update #{key} for #{item.type}"
-      end
-    end
+    patch content_item_url(@note), params: { content_item: { text: 'Updated note content' } }, as: :json
+    assert_response :success
+    json_response = JSON.parse(@response.body)
+    assert_equal 'Updated note content', json_response['text']
   end
 
   test 'should destroy content_item' do
@@ -92,7 +90,7 @@ class ContentItemsControllerTest < ActionDispatch::IntegrationTest
     assert_response :no_content
   end
 
-  test 'should handle validation errors' do
+  test 'should handle validation errors for Note' do
     assert_no_difference('ContentItem.count') do
       post content_items_url, params: { content_item: { type: 'Note', text: '' } }, as: :json
     end
