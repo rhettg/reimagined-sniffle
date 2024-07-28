@@ -25,18 +25,20 @@ class ContentItemsController < ApplicationController
     @content_item = ContentItem.new(content_item_params)
 
     if @content_item.save
-      redirect_to @content_item, notice: 'Content item was successfully created.'
+      @content_item.file.attach(params[:content_item][:file]) if params[:content_item][:file].present?
+      render json: @content_item, status: :created, location: @content_item
     else
-      render :new
+      render json: @content_item.errors, status: :unprocessable_entity
     end
   end
 
   # PATCH/PUT /content_items/1
   def update
     if @content_item.update(content_item_params)
-      redirect_to @content_item, notice: 'Content item was successfully updated.'
+      @content_item.file.attach(params[:content_item][:file]) if params[:content_item][:file].present?
+      render json: @content_item, status: :ok, location: @content_item
     else
-      render :edit
+      render json: @content_item.errors, status: :unprocessable_entity
     end
   end
 
@@ -58,6 +60,6 @@ class ContentItemsController < ApplicationController
 
   # Only allow a list of trusted parameters through.
   def content_item_params
-    params.require(:content_item).permit(:type)
+    params.require(:content_item).permit(:type, :title)
   end
 end
