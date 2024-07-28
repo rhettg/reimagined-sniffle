@@ -127,5 +127,10 @@ class ContentItemsControllerTest < ActionDispatch::IntegrationTest
     assert created_image.file.attached?
     assert_equal 'image/jpeg', created_image.file.content_type
     assert_equal 'test_image.jpg', created_image.file.filename.to_s
+
+    # Verify the file can be accessed
+    get json_response['file_url']
+    assert_response :success
+    assert_equal 'image/jpeg', response.content_type
   end
 end
