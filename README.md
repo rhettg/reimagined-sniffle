@@ -58,29 +58,48 @@ Sniffle allows content to be posted or dropped on the page and displays it in a 
 
 ## Getting Started
 
-### Ruby version
-- Ruby 3.2.0
+### Prerequisites
 
-### System dependencies
-- SQLite for the database
-- Local file system for media storage
+- Ensure you have `git` installed on your system.
+- Ensure you have `rbenv` installed for managing Ruby versions.
+- Ensure you have `sqlite3` installed for the database.
 
-### Configuration
-- Ensure you have the correct Ruby version installed using rbenv
+## Steps
 
-### Database creation
-- Run `script/setup` to set up the database
+### 1. Clone the Repository
+Clone the repository from GitHub using the following command:
 
-### Database initialization
-- Run `script/setup` to initialize the database
+```bash
+git clone https://github.com/rhettg/reimagined-sniffle.git
+cd reimagined-sniffle
+```
 
-### How to run the test suite
-- Run `script/test` to execute the test suite
+### 2. Update `.bashrc`
+Add the following line to your `.bashrc` file to ensure `rbenv` is initialized in each new shell session:
 
-### Services (job queues, cache servers, search engines, etc.)
-- Not applicable at this stage
+```bash
+echo 'eval "$(rbenv init -)"' >> ~/.bashrc
+source ~/.bashrc
+```
 
-### Deployment instructions
-- Not applicable at this stage
+### 3. Run the Setup Script
+Run the `script/setup` script to install dependencies and initialize the database:
 
-For more detailed information, refer to the `docs/product.md` file.
+```bash
+./script/setup
+```
+
+### 4. Start the Rails Server
+Start the Rails server using the following command:
+
+```bash
+rails server
+```
+
+### 5. Access the Application
+
+Open your browser and navigate to `http://localhost:3000` to access the Rails application.
+
+### 6. Confirm Accessibility
+
+Ensure the Rails application is accessible in the browser at the specified local address.
