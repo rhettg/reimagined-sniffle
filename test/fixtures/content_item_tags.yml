@@ -1,9 +1,9 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
 one:
-  content_item_id: content_items_one
-  tag_id: tags_one
+  content_item_id: <%= content_items(:one).id %>
+  tag_id: <%= tags(:one).id %>
 
 two:
-  content_item_id: content_items_two
-  tag_id: tags_two
+  content_item_id: <%= content_items(:two).id %>
+  tag_id: <%= tags(:two).id %>
