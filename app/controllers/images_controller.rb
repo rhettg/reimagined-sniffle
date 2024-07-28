@@ -26,9 +26,9 @@ class ImagesController < ApplicationController
 
     if @image.save
       @image.file.attach(params[:image][:file]) if params[:image][:file].present?
-      render :show, status: :created, location: @image
+      render json: @image, status: :created, location: @image
     else
-      render :new
+      render json: @image.errors, status: :unprocessable_entity
     end
   end
 
@@ -36,9 +36,9 @@ class ImagesController < ApplicationController
   def update
     if @image.update(image_params)
       @image.file.attach(params[:image][:file]) if params[:image][:file].present?
-      render :show, status: :ok, location: @image
+      render json: @image, status: :ok, location: @image
     else
-      render :edit
+      render json: @image.errors, status: :unprocessable_entity
     end
   end
 
