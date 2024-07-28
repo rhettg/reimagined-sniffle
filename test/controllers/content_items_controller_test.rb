@@ -41,11 +41,11 @@ class ContentItemsControllerTest < ActionDispatch::IntegrationTest
       assert_equal 'https://example.com', json_response['url']
 
       # Create Note
-      post content_items_url, params: { content_item: { type: 'Note', text: 'This is a new note' } }, as: :json
+      post content_items_url, params: { content_item: { type: 'Note', content: 'This is a new note' } }, as: :json
       assert_response :created
       json_response = JSON.parse(@response.body)
       assert_equal 'Note', json_response['type']
-      assert_equal 'This is a new note', json_response['text']
+      assert_equal 'This is a new note', json_response['content']
     end
   end
 
@@ -77,10 +77,10 @@ class ContentItemsControllerTest < ActionDispatch::IntegrationTest
     json_response = JSON.parse(@response.body)
     assert_equal 'https://updated-example.com', json_response['url']
 
-    patch content_item_url(@note), params: { content_item: { text: 'Updated note content' } }, as: :json
+    patch content_item_url(@note), params: { content_item: { content: 'Updated note content' } }, as: :json
     assert_response :success
     json_response = JSON.parse(@response.body)
-    assert_equal 'Updated note content', json_response['text']
+    assert_equal 'Updated note content', json_response['content']
   end
 
   test 'should destroy content_item' do
@@ -92,14 +92,31 @@ class ContentItemsControllerTest < ActionDispatch::IntegrationTest
 
   test 'should handle validation errors for Note' do
     assert_no_difference('ContentItem.count') do
-      post content_items_url, params: { content_item: { type: 'Note', text: '' } }, as: :json
+      post content_items_url, params: { content_item: { type: 'Note', content: '' } }, as: :json
     end
 
     assert_response :unprocessable_entity
     assert_equal 'application/json', @response.media_type
 
     json_response = JSON.parse(@response.body)
-    assert_includes json_response['errors'].keys, 'text'
-    assert_includes json_response['errors']['text'], "can't be blank"
+    assert_includes json_response['errors'].keys, 'content'
+    assert_includes json_response['errors']['content'], "can't be blank"
+  end
+
+  test 'should create image with file attachment' do
+    assert_difference('ContentItem.count') do
+      post content_items_url, params: {
+        content_item: {
+          type: 'Image',
+          title: 'Test Image with File',
+          file: fixture_file_upload('test_image.jpg', 'image/jpeg')
+        }
+      }, as: :json
+    end
+    assert_response :created
+    json_response = JSON.parse(@response.body)
+    assert_equal 'Image', json_response['type']
+    assert_equal 'Test Image with File', json_response['title']
+    assert_not_nil json_response['file_url']
   end
 end
