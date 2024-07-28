@@ -28,7 +28,7 @@ class ContentItemsController < ApplicationController
       @content_item.file.attach(params[:content_item][:file]) if params[:content_item][:file].present?
       render json: @content_item, status: :created, location: @content_item
     else
-      render json: @content_item.errors, status: :unprocessable_entity
+      render json: { errors: @content_item.errors }, status: :unprocessable_entity
     end
   end
 
@@ -38,7 +38,7 @@ class ContentItemsController < ApplicationController
       @content_item.file.attach(params[:content_item][:file]) if params[:content_item][:file].present?
       render json: @content_item, status: :ok, location: @content_item
     else
-      render json: @content_item.errors, status: :unprocessable_entity
+      render json: { errors: @content_item.errors }, status: :unprocessable_entity
     end
   end
 
@@ -47,7 +47,7 @@ class ContentItemsController < ApplicationController
     if @content_item.destroy
       head :no_content
     else
-      redirect_to content_items_url, alert: 'Cannot delete content item because it is referenced by other records.'
+      render json: { errors: ['Cannot delete content item because it is referenced by other records.'] }, status: :unprocessable_entity
     end
   end
 
@@ -60,6 +60,6 @@ class ContentItemsController < ApplicationController
 
   # Only allow a list of trusted parameters through.
   def content_item_params
-    params.require(:content_item).permit(:type, :title)
+    params.require(:content_item).permit(:type, :title, :url, :text, :file)
   end
 end
