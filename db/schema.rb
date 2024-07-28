@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2024_07_27_231543) do
+ActiveRecord::Schema[7.1].define(version: 2024_07_28_191231) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
     t.string "record_type", null: false
@@ -52,26 +52,12 @@ ActiveRecord::Schema[7.1].define(version: 2024_07_27_231543) do
     t.string "type"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-  end
-
-  create_table "images", force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-  end
-
-  create_table "links", force: :cascade do |t|
-    t.string "url"
     t.string "title"
-    t.text "description"
-    t.string "thumbnail_url"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-  end
-
-  create_table "notes", force: :cascade do |t|
-    t.text "text"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
+    t.string "url"
+    t.text "content"
+    t.string "file_type"
+    t.integer "file_id"
+    t.index ["file_type", "file_id"], name: "index_content_items_on_file"
   end
 
   create_table "tags", force: :cascade do |t|
