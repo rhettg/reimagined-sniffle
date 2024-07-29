@@ -39,31 +39,24 @@ class ContentItemsController < ApplicationController
       return
     end
 
-    @content_item = content_item_class.new(content_item_params.except(:type, :file))
+    @content_item = content_item_class.new(content_item_params.except(:file))
 
     if content_item_params[:file].present? && @content_item.respond_to?(:file)
       begin
         @content_item.file.attach(content_item_params[:file])
-        if @content_item.file.attached?
-          Rails.logger.debug "File successfully attached for content_item: #{@content_item.id}"
-        else
-          Rails.logger.error "File attachment failed for content_item: #{@content_item.id}"
-        end
+        Rails.logger.debug "File attached successfully: #{@content_item.file.attached?}"
       rescue StandardError => e
-        Rails.logger.error "File attachment failed for content_item: #{@content_item.id}. Error: #{e.message}"
+        Rails.logger.error "Failed to attach file: #{e.message}"
+        render json: { error: "File attachment failed" }, status: :unprocessable_entity
+        return
       end
-    else
-      Rails.logger.debug "No file parameter present in the request or content item doesn't support file attachments"
     end
 
     if @content_item.save
-      render json: @content_item.as_json.merge(
-        type: @content_item.type,
-        file_url: @content_item.file.attached? ? url_for(@content_item.file) : nil,
-        image_url: @content_item.is_a?(Image) && @content_item.file.attached? ? url_for(@content_item.file) : nil,
-        link_url: @content_item.is_a?(Link) ? @content_item.url : nil
-      ), status: :created, location: content_item_url(@content_item)
+      Rails.logger.info "Content item saved successfully: #{@content_item.id}"
+      render json: content_item_json(@content_item), status: :created, location: @content_item
     else
+      Rails.logger.error "Failed to save content item: #{@content_item.errors.full_messages}"
       render json: { errors: @content_item.errors }, status: :unprocessable_entity
     end
   end
@@ -90,11 +83,7 @@ class ContentItemsController < ApplicationController
         end
       end
 
-      render json: @content_item.as_json.merge(
-        type: @content_item.class.name,
-        file_url: file_url(@content_item),
-        image_url: image_url(@content_item)
-      ), status: :ok
+      render json: content_item_json(@content_item), status: :ok
     else
       render json: { errors: @content_item.errors }, status: :unprocessable_entity
     end
@@ -109,6 +98,22 @@ class ContentItemsController < ApplicationController
     end
   end
 
+  def default_url_options
+    { host: request.base_url || 'http://localhost:3000' }
+  end
+
+  def file_url(content_item)
+    content_item.file.attached? ? url_for(content_item.file) : nil
+  end
+
+  def image_url(content_item)
+    content_item.is_a?(Image) && content_item.file.attached? ? url_for(content_item.file) : nil
+  end
+
+
+
+
+
   private
 
   # Use callbacks to share common setup or constraints between actions.
@@ -121,15 +126,17 @@ class ContentItemsController < ApplicationController
     params.require(:content_item).permit(:type, :title, :url, :content, :description, :thumbnail_url, :file)
   end
 
-  def default_url_options
-    { host: request.base_url || 'http://localhost:3000' }
-  end
+  def content_item_json(content_item)
+    json = content_item.as_json.merge(
+      type: content_item.type,
+      title: content_item.title,
+      content: content_item.content
+    )
 
-  def file_url(content_item)
-    content_item.file.attached? ? url_for(content_item.file) : nil
-  end
+    json[:file_url] = file_url(content_item) if content_item.respond_to?(:file)
+    json[:image_url] = image_url(content_item) if content_item.is_a?(Image)
+    json[:link_url] = content_item.url if content_item.is_a?(Link)
 
-  def image_url(content_item)
-    content_item.is_a?(Image) && content_item.file.attached? ? url_for(content_item.file) : nil
+    json
   end
 end
