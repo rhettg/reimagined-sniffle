@@ -53,6 +53,7 @@ class ContentItemsController < ApplicationController
         end
         Rails.logger.debug "Final response_data: #{response_data.inspect}"
 
+        Rails.logger.debug "Rendering response with status :created"
         render json: response_data, status: :created, location: @content_item
       else
         Rails.logger.error "Failed to save content item: #{@content_item.errors.full_messages}"
