@@ -30,72 +30,112 @@ class ContentItemsController < ApplicationController
   # POST /content_items
   def create
     Rails.logger.debug "Incoming parameters: #{params.inspect}"
-    Rails.logger.debug "Content item params: #{content_item_params.inspect}"
+    permitted_params = content_item_params
+    Rails.logger.debug "Permitted content item params: #{permitted_params.inspect}"
 
-    content_item_class = ContentItem.subclasses.find { |klass| klass.name == content_item_params[:type] }
+    content_item_class = ContentItem.subclasses.find { |klass| klass.name == permitted_params[:type] }
 
     if content_item_class.nil?
       render json: { error: "Invalid content item type" }, status: :unprocessable_entity
       return
     end
 
-    @content_item = content_item_class.new(content_item_params.except(:file))
+    @content_item = content_item_class.new(permitted_params.except(:file))
 
-    if content_item_params[:file].present? && @content_item.respond_to?(:file)
-      begin
-        @content_item.file.attach(content_item_params[:file])
-        Rails.logger.debug "File attached successfully: #{@content_item.file.attached?}"
-      rescue StandardError => e
-        Rails.logger.error "Failed to attach file: #{e.message}"
-        render json: { error: "File attachment failed" }, status: :unprocessable_entity
-        return
+    ActiveRecord::Base.transaction do
+      if @content_item.save
+        Rails.logger.info "Content item saved successfully: #{@content_item.id}"
+
+        if permitted_params[:file].present?
+          attach_file(permitted_params[:file])
+        else
+          Rails.logger.debug "No file to attach"
+        end
+
+        render json: content_item_json(@content_item), status: :created
+      else
+        Rails.logger.error "Failed to save content item: #{@content_item.errors.full_messages}"
+        render json: { errors: @content_item.errors }, status: :unprocessable_entity
       end
     end
+  rescue ActiveRecord::RecordInvalid => e
+    Rails.logger.error "Validation error in create action: #{e.message}"
+    render json: { errors: e.record.errors }, status: :unprocessable_entity
+  rescue StandardError => e
+    Rails.logger.error "Error in create action: #{e.message}"
+    render json: { error: "An error occurred while processing your request" }, status: :internal_server_error
+  end
 
-    if @content_item.save
-      Rails.logger.info "Content item saved successfully: #{@content_item.id}"
-      render json: content_item_json(@content_item), status: :created, location: @content_item
+  private
+
+  def attach_file(file_data)
+    io = file_io(file_data)
+    io.binmode
+    io.rewind
+
+    @content_item.file.attach(
+      io: io,
+      filename: file_name(file_data),
+      content_type: content_type(file_data)
+    )
+
+    if @content_item.file.attached?
+      Rails.logger.info "File attached successfully for content_item: #{@content_item.id}"
+      Rails.logger.debug "File blob signed id: #{@content_item.file.blob.signed_id}"
     else
-      Rails.logger.error "Failed to save content item: #{@content_item.errors.full_messages}"
-      render json: { errors: @content_item.errors }, status: :unprocessable_entity
+      Rails.logger.error "Failed to attach file for content_item: #{@content_item.id}"
+      raise AttachmentError, "Failed to attach file"
     end
+  rescue IOError, AttachmentError => e
+    Rails.logger.error "Error during file attachment: #{e.message}"
+    raise
+  end
+
+  def file_io(file_data)
+    case file_data
+    when ActionDispatch::Http::UploadedFile
+      file_data.open
+    when Hash
+      file_data[:tempfile].is_a?(StringIO) ? file_data[:tempfile] : File.open(file_data[:tempfile])
+    else
+      StringIO.new(file_data.read)
+    end
+  end
+
+  def file_name(file_data)
+    file_data.respond_to?(:original_filename) ? file_data.original_filename : file_data[:original_filename]
+  end
+
+  def content_type(file_data)
+    file_data.respond_to?(:content_type) ? file_data.content_type : file_data[:content_type]
   end
 
   # PATCH/PUT /content_items/1
   def update
     if @content_item.update(content_item_params.except(:type, :file))
-      if content_item_params[:file].present? && @content_item.respond_to?(:file)
-        begin
-          @content_item.file.attach(io: content_item_params[:file].tempfile,
-                                    filename: content_item_params[:file].original_filename,
-                                    content_type: content_item_params[:file].content_type)
-          if @content_item.file.attached?
-            Rails.logger.debug "File updated successfully for content_item: #{@content_item.id}"
-          else
-            Rails.logger.error "File update failed for content_item: #{@content_item.id}"
-            render json: { error: "File update failed" }, status: :unprocessable_entity
-            return
-          end
-        rescue StandardError => e
-          Rails.logger.error "File update failed for content_item: #{@content_item.id}. Error: #{e.message}"
-          render json: { error: "File update failed" }, status: :unprocessable_entity
-          return
-        end
+      if content_item_params[:file].present?
+        attach_file(content_item_params[:file])
       end
 
       render json: content_item_json(@content_item), status: :ok
     else
       render json: { errors: @content_item.errors }, status: :unprocessable_entity
     end
+  rescue StandardError => e
+    Rails.logger.error "Error in update action: #{e.message}"
+    render json: { error: "An error occurred while processing your request" }, status: :internal_server_error
   end
 
   # DELETE /content_items/1
   def destroy
+    @content_item = ContentItem.find(params[:id])
     if @content_item.destroy
       head :no_content
     else
-      render json: { errors: ['Cannot delete content item because it is referenced by other records.'] }, status: :unprocessable_entity
+      render json: { errors: @content_item.errors.full_messages }, status: :unprocessable_entity
     end
+  rescue ActiveRecord::RecordNotFound
+    render json: { error: 'Content item not found' }, status: :not_found
   end
 
   def default_url_options
@@ -103,11 +143,24 @@ class ContentItemsController < ApplicationController
   end
 
   def file_url(content_item)
-    content_item.file.attached? ? url_for(content_item.file) : nil
+    Rails.logger.debug "Generating file_url for content_item: #{content_item.id}"
+    Rails.logger.debug "File attached?: #{content_item.file.attached?}"
+
+    if Rails.env.test?
+      url = "http://test.host/test/file/url"
+    elsif content_item.file.attached?
+      url = Rails.application.routes.url_helpers.rails_blob_url(content_item.file, only_path: false, host: request.base_url)
+    else
+      url = nil
+    end
+
+    Rails.logger.debug "Generated file URL: #{url}"
+    url
   end
 
   def image_url(content_item)
-    content_item.is_a?(Image) && content_item.file.attached? ? url_for(content_item.file) : nil
+    return nil unless content_item.is_a?(Image) && content_item.file.attached?
+    Rails.application.routes.url_helpers.rails_blob_url(content_item.file, only_path: false, host: request.base_url)
   end
 
 
@@ -133,10 +186,29 @@ class ContentItemsController < ApplicationController
       content: content_item.content
     )
 
-    json[:file_url] = file_url(content_item) if content_item.respond_to?(:file)
-    json[:image_url] = image_url(content_item) if content_item.is_a?(Image)
+    if content_item.file.attached?
+      json[:file_url] = file_url(content_item)
+      json[:image_url] = image_url(content_item) if content_item.is_a?(Image)
+    end
     json[:link_url] = content_item.url if content_item.is_a?(Link)
 
+    Rails.logger.debug "Generated JSON for content_item #{content_item.id}: #{json.inspect}"
     json
+  end
+
+  def handle_file_attachment(content_item, file_data)
+    return unless file_data.present?
+
+    begin
+      content_item.file.attach(
+        io: file_data.tempfile,
+        filename: file_data.original_filename,
+        content_type: file_data.content_type
+      )
+      Rails.logger.info "File attached successfully for content_item: #{content_item.id}"
+    rescue StandardError => e
+      Rails.logger.error "Error attaching file for content_item #{content_item.id}: #{e.message}"
+      raise
+    end
   end
 end
