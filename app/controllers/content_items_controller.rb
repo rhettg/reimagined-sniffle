@@ -36,7 +36,13 @@ class ContentItemsController < ApplicationController
     Rails.logger.debug "New content item: #{@content_item.inspect}"
 
     if content_item_params[:file].present?
-      attach_file
+      file = content_item_params[:file]
+      if file.is_a?(ActionDispatch::Http::UploadedFile)
+        @content_item.file.attach(file)
+      else
+        render json: { error: "Invalid file format" }, status: :unprocessable_entity
+        return
+      end
       Rails.logger.debug "File attached: #{@content_item.file.attached?}"
       Rails.logger.debug "Attached file details: #{@content_item.file.blob.inspect}" if @content_item.file.attached?
     end
@@ -59,24 +65,7 @@ class ContentItemsController < ApplicationController
 
   private
 
-  def attach_file
-    Rails.logger.debug "File present in params: #{content_item_params[:file].inspect}"
-    Rails.logger.debug "File class: #{content_item_params[:file].class}"
 
-    files = content_item_params[:file].is_a?(Array) ? content_item_params[:file] : [content_item_params[:file]]
-
-    files.each do |file_data|
-      attachment = @content_item.file.attach(
-        io: file_data.tempfile,
-        filename: file_data.original_filename,
-        content_type: file_data.content_type
-      )
-      Rails.logger.debug "File attached: #{attachment.persisted?}"
-      Rails.logger.debug "Attached file details: #{attachment.blob.inspect}"
-    end
-
-    Rails.logger.debug "Total files attached: #{@content_item.file.attachments.count}"
-  end
 
   def handle_successful_save
     Rails.logger.debug "Content item saved successfully: #{@content_item.inspect}"
@@ -172,13 +161,7 @@ class ContentItemsController < ApplicationController
 
   private
 
-  def attach_file
-    Rails.logger.debug "File present in params: #{content_item_params[:file].inspect}"
-    attachment_result = @content_item.file.attach(content_item_params[:file])
-    Rails.logger.debug "File attachment result: #{attachment_result}"
-    @content_item.save
-    Rails.logger.debug "Content item saved after file attachment: #{@content_item.inspect}"
-  end
+
 
   # Use callbacks to share common setup or constraints between actions.
   def set_content_item
@@ -193,16 +176,7 @@ class ContentItemsController < ApplicationController
 
   # Only allow a list of trusted parameters through.
   def content_item_params
-    Rails.logger.debug "Raw params: #{params.inspect}"
-    Rails.logger.debug "File parameter before permitting: #{params[:content_item][:file].inspect}"
-    permitted_params = params.require(:content_item).permit(:type, :title, :url, :content, :file)
-    Rails.logger.debug "Permitted parameters: #{permitted_params.inspect}"
-    Rails.logger.debug "File parameter after permitting: #{permitted_params[:file].inspect}"
-    if permitted_params[:file].present?
-      Rails.logger.debug "File parameter class: #{permitted_params[:file].class}"
-      Rails.logger.debug "File parameter details: #{permitted_params[:file].inspect}"
-    end
-    permitted_params
+    params.require(:content_item).permit(:type, :title, :url, :content, :file)
   end
 
   def determine_host
