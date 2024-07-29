@@ -41,13 +41,16 @@ class ContentItemsController < ApplicationController
           @content_item.file.attach(params[:file])
           Rails.logger.debug "File attached: #{@content_item.file.attached?}"
         end
-        file_url = image_url(@content_item)
+        file_url = file_url_for(@content_item)
         Rails.logger.debug "Content item: #{@content_item.inspect}"
         Rails.logger.debug "File attached?: #{@content_item.file.attached?}"
         Rails.logger.debug "File URL: #{file_url}"
         Rails.logger.debug "File blob: #{@content_item.file.blob.inspect}" if @content_item.file.attached?
         Rails.logger.debug "File URL before rendering: #{file_url}"
-        render json: @content_item.as_json.merge(type: @content_item.class.name, file_url: file_url), status: :created, location: @content_item
+        render json: @content_item.as_json.merge(
+          type: @content_item.class.name,
+          file_url: file_url
+        ), status: :created, location: @content_item
       else
         Rails.logger.debug "Content item errors: #{@content_item.errors.full_messages}"
         render json: { errors: @content_item.errors }, status: :unprocessable_entity
@@ -84,6 +87,15 @@ class ContentItemsController < ApplicationController
     end
   end
 
+  def file_url_for(content_item)
+    return nil unless content_item.file.attached?
+    Rails.application.routes.url_helpers.rails_blob_url(content_item.file, only_path: false, host: default_url_options[:host])
+  end
+
+  def image_url(content_item)
+    file_url_for(content_item)
+  end
+
   private
 
   # Use callbacks to share common setup or constraints between actions.
@@ -98,14 +110,5 @@ class ContentItemsController < ApplicationController
 
   def default_url_options
     { host: 'localhost:3000' } # Adjust this to match your test environment
-  end
-
-  def file_url_for(content_item)
-    return nil unless content_item.file.attached?
-    Rails.application.routes.url_helpers.rails_blob_url(content_item.file, only_path: false, host: default_url_options[:host])
-  end
-
-  def image_url(content_item)
-    file_url_for(content_item)
   end
 end
