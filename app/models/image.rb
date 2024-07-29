@@ -8,7 +8,13 @@ class Image < ContentItem
   def file_url
     if file.attached?
       Rails.application.routes.url_helpers.rails_blob_url(file, only_path: false, host: default_url_options[:host])
+    else
+      Rails.logger.debug "File is not attached"
+      nil
     end
+  rescue StandardError => e
+    Rails.logger.error "Error generating file URL: #{e.message}"
+    nil
   end
 
   private

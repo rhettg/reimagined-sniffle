@@ -114,7 +114,7 @@ class ContentItemsControllerTest < ActionDispatch::IntegrationTest
 
   test 'should create image with file attachment' do
     assert_difference('ContentItem.count') do
-      file = fixture_file_upload(Rails.root.join('test', 'fixtures', 'files', 'test_image.jpg'), 'image/jpeg')
+      file = Rack::Test::UploadedFile.new(Rails.root.join('test', 'fixtures', 'files', 'test_image.jpg'), 'image/jpeg')
       post content_items_url, params: {
         content_item: {
           type: 'Image',

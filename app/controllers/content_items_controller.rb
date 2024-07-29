@@ -7,7 +7,7 @@ class ContentItemsController < ApplicationController
   # GET /content_items
   def index
     @content_items = ContentItem.all
-    render json: @content_items
+    render json: @content_items.map { |item| item.as_json.merge(type: item.type) }
   end
 
   # GET /content_items/1
@@ -25,9 +25,9 @@ class ContentItemsController < ApplicationController
 
   # POST /content_items
   def create
-    Rails.logger.debug "Entering create action"
-    Rails.logger.debug "Incoming parameters: #{params.inspect}"
+    Rails.logger.debug "Raw params: #{params.inspect}"
     Rails.logger.debug "Content item params: #{content_item_params.inspect}"
+    Rails.logger.debug "File param: #{params.dig(:content_item, :file).inspect}"
 
     content_item_class = content_item_params[:type].constantize
     Rails.logger.debug "Content item class: #{content_item_class}"
@@ -35,79 +35,51 @@ class ContentItemsController < ApplicationController
     @content_item = content_item_class.new(content_item_params.except(:type, :file))
     Rails.logger.debug "New content item: #{@content_item.inspect}"
 
-    if content_item_params[:file].present?
-      file = content_item_params[:file]
-      if file.is_a?(ActionDispatch::Http::UploadedFile)
-        @content_item.file.attach(file)
-      else
-        render json: { error: "Invalid file format" }, status: :unprocessable_entity
-        return
-      end
-      Rails.logger.debug "File attached: #{@content_item.file.attached?}"
-      Rails.logger.debug "Attached file details: #{@content_item.file.blob.inspect}" if @content_item.file.attached?
-    end
-
     if @content_item.save
-      handle_successful_save
+      Rails.logger.debug "Content item saved successfully: #{@content_item.inspect}"
+      if @content_item.is_a?(Image) && params[:content_item][:file].present?
+        begin
+          @content_item.file.attach(params[:content_item][:file])
+          @content_item.save!
+          Rails.logger.debug "File attached successfully: #{@content_item.file.attached?}"
+          Rails.logger.debug "Attached file details: #{@content_item.file.blob.inspect}"
+        rescue => e
+          Rails.logger.error "Error attaching file: #{e.message}"
+          Rails.logger.error e.backtrace.join("\n")
+          return render json: { error: "Failed to attach file" }, status: :unprocessable_entity
+        end
+      end
+
+      render json: @content_item.as_json.merge(
+        type: @content_item.type,
+        file_url: @content_item.file_url
+      ), status: :created
     else
-      handle_failed_save
+      Rails.logger.error "Failed to save content item: #{@content_item.errors.full_messages}"
+      render json: { errors: @content_item.errors }, status: :unprocessable_entity
     end
   rescue NameError => e
-    handle_name_error(e)
-  rescue ActiveRecord::RecordInvalid => e
-    handle_record_invalid(e)
+    Rails.logger.error "Invalid content item type: #{e.message}"
+    render json: { error: "Invalid content item type", details: e.message }, status: :unprocessable_entity
   rescue StandardError => e
-    handle_standard_error(e)
-  ensure
-    Rails.logger.debug "Exiting create action"
-    Rails.logger.debug "Final content item state: #{@content_item.inspect}"
+    Rails.logger.error "Unexpected error while creating content item: #{e.message}"
+    Rails.logger.error e.backtrace.join("\n")
+    render json: { error: "An error occurred while creating the content item" }, status: :internal_server_error
   end
 
   private
 
-
-
-  def handle_successful_save
-    Rails.logger.debug "Content item saved successfully: #{@content_item.inspect}"
-    file_url = file_url_for(@content_item)
-    Rails.logger.debug "Generated file URL: #{file_url}"
-    response_body = @content_item.as_json.merge(type: @content_item.type, file_url: file_url)
-    Rails.logger.debug "Response body: #{response_body.inspect}"
-    render json: response_body, status: :created, location: @content_item
-    Rails.logger.debug "Response sent with status :created"
-  end
-
-  def handle_failed_save
-    Rails.logger.debug "Content item save failed: #{@content_item.errors.full_messages}"
-    render json: { errors: @content_item.errors }, status: :unprocessable_entity
-  end
-
-  def handle_name_error(error)
-    Rails.logger.error "NameError in create action: #{error.message}"
-    render json: { error: "Invalid content item type", details: error.message }, status: :unprocessable_entity
-  end
-
-  def handle_record_invalid(error)
-    Rails.logger.error "Validation error in create action: #{error.message}"
-    render json: { errors: error.record.errors }, status: :unprocessable_entity
-  end
-
-  def handle_standard_error(error)
-    Rails.logger.error "Error in create action: #{error.message}"
-    render json: { error: "An error occurred while creating the content item" }, status: :internal_server_error
-  end
-
   # PATCH/PUT /content_items/1
   def update
-    if @content_item.update(content_item_params.except(:file))
-      if content_item_params[:file].present?
+    if @content_item.update(content_item_params.except(:type, :file))
+      if content_item_params[:file].present? && @content_item.is_a?(Image)
         @content_item.file.attach(content_item_params[:file])
-        @content_item.save
       end
+
       render json: @content_item.as_json.merge(
         type: @content_item.type,
         file_url: file_url_for(@content_item)
-      ), status: :ok, location: @content_item
+      ), status: :ok
     else
       render json: { errors: @content_item.errors }, status: :unprocessable_entity
     end
@@ -122,46 +94,8 @@ class ContentItemsController < ApplicationController
     end
   end
 
-  # Generate file URL if file is attached
-  def file_url_for(content_item)
-    Rails.logger.debug "Calling file_url_for with content_item: #{content_item.inspect}"
-    Rails.logger.debug "File attached?: #{content_item.file.attached?}"
-    return nil unless content_item.file.attached?
-
-    begin
-      host = determine_host
-      Rails.logger.debug "Using host for URL generation: #{host}"
-
-      if content_item.file.is_a?(ActiveStorage::Attached::One)
-        url = Rails.application.routes.url_helpers.rails_blob_url(content_item.file, host: host)
-      elsif content_item.file.is_a?(ActiveStorage::Attached::Many)
-        url = content_item.file.map { |file| Rails.application.routes.url_helpers.rails_blob_url(file, host: host) }
-      else
-        raise ArgumentError, "Unexpected file attachment type: #{content_item.file.class}"
-      end
-
-      Rails.logger.debug "Generated file URL(s): #{url}"
-      url
-    rescue StandardError => e
-      Rails.logger.error "Error in file_url_for method: #{e.message}"
-      Rails.logger.error e.backtrace.join("\n")
-      report_error(e)
-      nil
-    end
-  end
-
-  public
-
-  def image_url(content_item)
-    Rails.logger.debug "Entering image_url method for content_item: #{content_item.inspect}"
-    result = file_url_for(content_item)
-    Rails.logger.debug "Exiting image_url method. Result: #{result}"
-    result
-  end
-
-  private
-
-
+  # This method has been removed as it's no longer needed.
+  # The file_url is now generated in the Image model.
 
   # Use callbacks to share common setup or constraints between actions.
   def set_content_item
@@ -176,43 +110,11 @@ class ContentItemsController < ApplicationController
 
   # Only allow a list of trusted parameters through.
   def content_item_params
-    params.require(:content_item).permit(:type, :title, :url, :content, :file)
+    params.require(:content_item).permit(:type, :title, :url, :content, :description, :thumbnail_url, :file)
   end
 
-  def determine_host
-    if Rails.env.production?
-      ENV['APPLICATION_HOST'] || raise("APPLICATION_HOST environment variable is not set")
-    elsif Rails.env.test?
-      'http://localhost:3000'
-    else
-      request.base_url || 'http://localhost:3000'
-    end
-  end
 
-  def report_error(error)
-    # Implement error reporting logic here (e.g., sending to an error tracking service)
-    Rails.logger.error "Error reported: #{error.message}"
-  end
 
-  def default_url_options
-    host = determine_host
-    Rails.logger.debug "Using host for URL generation: #{host}"
-    { host: host }
-  end
+  # These methods have been moved to ApplicationController
 
-  # This method has been moved up and combined with the previous definition
-  # def determine_host
-  #   if Rails.env.production?
-  #     ENV['APPLICATION_HOST'] || raise("APPLICATION_HOST environment variable is not set")
-  #   elsif Rails.env.test?
-  #     'http://localhost:3000'
-  #   else
-  #     request.base_url || 'http://localhost:3000'
-  #   end
-  # end
-
-  # This method has been moved up and combined with the previous definition
-  # def default_url_options
-  #   { host: determine_host }
-  # end
 end
