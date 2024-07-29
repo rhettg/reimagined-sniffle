@@ -7,13 +7,15 @@ class ContentItemsController < ApplicationController
   # GET /content_items
   def index
     @content_items = ContentItem.all
-    render json: @content_items.map { |item| item.as_json(methods: [:file_url]).merge(type: item.type) }
+    render json: @content_items.map { |item| item.as_json.merge(type: item.type, file_url: file_url(item), image_url: image_url(item)) }
   end
 
   # GET /content_items/1
   def show
-    render json: @content_item.as_json(methods: [:file_url]).merge(
-      type: @content_item.class.name
+    render json: @content_item.as_json.merge(
+      type: @content_item.class.name,
+      file_url: file_url(@content_item),
+      image_url: image_url(@content_item)
     ), status: :ok
   end
 
@@ -41,8 +43,11 @@ class ContentItemsController < ApplicationController
     end
 
     if @content_item.save
-      render json: @content_item.as_json(methods: [:file_url]).merge(type: @content_item.class.name),
-             status: :created, location: @content_item
+      render json: @content_item.as_json.merge(
+        type: @content_item.class.name,
+        file_url: file_url(@content_item),
+        image_url: image_url(@content_item)
+      ), status: :created, location: @content_item
     else
       render json: { errors: @content_item.errors }, status: :unprocessable_entity
     end
@@ -55,8 +60,10 @@ class ContentItemsController < ApplicationController
         @content_item.file.attach(content_item_params[:file])
       end
 
-      render json: @content_item.as_json(methods: [:file_url]).merge(
-        type: @content_item.class.name
+      render json: @content_item.as_json.merge(
+        type: @content_item.class.name,
+        file_url: file_url(@content_item),
+        image_url: image_url(@content_item)
       ), status: :ok
     else
       render json: { errors: @content_item.errors }, status: :unprocessable_entity
@@ -85,6 +92,15 @@ class ContentItemsController < ApplicationController
   end
 
   def default_url_options
-    { host: 'localhost:3000' } # Adjust this to match your test environment
+    { host: Rails.application.config.action_mailer.default_url_options&.fetch(:host, 'localhost:3000') }
+  end
+
+  def image_url(content_item)
+    file_url(content_item)
+  end
+
+  def file_url(content_item)
+    return nil unless content_item.respond_to?(:file) && content_item.file.attached?
+    Rails.application.routes.url_helpers.rails_blob_url(content_item.file, only_path: false, host: default_url_options[:host])
   end
 end
