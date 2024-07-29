@@ -6,12 +6,14 @@ class ContentItemsController < ApplicationController
 
   # GET /content_items
   def index
+    Rails.logger.debug "Entering index action for ContentItemsController"
     @content_items = ContentItem.all
     render json: @content_items.map { |item| item.as_json.merge(type: item.type, file_url: file_url(item), image_url: image_url(item)) }
   end
 
   # GET /content_items/1
   def show
+    Rails.logger.debug "Entering #{action_name} action for ContentItemsController"
     render json: @content_item.as_json.merge(
       type: @content_item.class.name,
       file_url: file_url(@content_item),
@@ -21,14 +23,18 @@ class ContentItemsController < ApplicationController
 
   # GET /content_items/new
   def new
+    Rails.logger.debug "Entering new action for ContentItemsController"
     @content_item = ContentItem.new
   end
 
   # GET /content_items/1/edit
-  def edit; end
+  def edit
+    Rails.logger.debug "Entering edit action for ContentItemsController"
+  end
 
   # POST /content_items
   def create
+    Rails.logger.debug "Entering create action for ContentItemsController"
     Rails.logger.debug "Incoming parameters: #{params.inspect}"
     permitted_params = content_item_params
     Rails.logger.debug "Permitted content item params: #{permitted_params.inspect}"
@@ -112,30 +118,50 @@ class ContentItemsController < ApplicationController
 
   # PATCH/PUT /content_items/1
   def update
-    if @content_item.update(content_item_params.except(:type, :file))
-      if content_item_params[:file].present?
-        attach_file(content_item_params[:file])
-      end
+    Rails.logger.debug "Entering update action for content_item with id: #{params[:id]}"
+    Rails.logger.debug "Update params: #{params.inspect}"
 
-      render json: content_item_json(@content_item), status: :ok
-    else
-      render json: { errors: @content_item.errors }, status: :unprocessable_entity
+    ActiveRecord::Base.transaction do
+      if @content_item.update(content_item_params.except(:type, :file))
+        Rails.logger.info "Content item updated successfully: #{@content_item.id}"
+
+        if content_item_params[:file].present?
+          begin
+            attach_file(content_item_params[:file])
+          rescue StandardError => e
+            Rails.logger.error "Error attaching file during update: #{e.message}"
+            raise ActiveRecord::Rollback
+          end
+        end
+
+        render json: content_item_json(@content_item), status: :ok
+      else
+        Rails.logger.error "Failed to update content item: #{@content_item.errors.full_messages}"
+        render json: { errors: @content_item.errors }, status: :unprocessable_entity
+      end
     end
+  rescue ActiveRecord::RecordNotFound
+    Rails.logger.error "Content item not found with id: #{params[:id]}"
+    render json: { error: "Content item not found" }, status: :not_found
   rescue StandardError => e
     Rails.logger.error "Error in update action: #{e.message}"
+    Rails.logger.error e.backtrace.join("\n")
     render json: { error: "An error occurred while processing your request" }, status: :internal_server_error
   end
 
   # DELETE /content_items/1
   def destroy
-    @content_item = ContentItem.find(params[:id])
+    Rails.logger.debug "Entering destroy action for ContentItemsController"
     if @content_item.destroy
+      Rails.logger.info "Content item #{@content_item.id} successfully destroyed"
       head :no_content
     else
+      Rails.logger.error "Failed to destroy content item #{@content_item.id}: #{@content_item.errors.full_messages}"
       render json: { errors: @content_item.errors.full_messages }, status: :unprocessable_entity
     end
-  rescue ActiveRecord::RecordNotFound
-    render json: { error: 'Content item not found' }, status: :not_found
+  rescue StandardError => e
+    Rails.logger.error "Error in destroy action: #{e.message}"
+    render json: { error: "An error occurred while processing your request" }, status: :internal_server_error
   end
 
   def default_url_options
@@ -146,15 +172,17 @@ class ContentItemsController < ApplicationController
     Rails.logger.debug "Generating file_url for content_item: #{content_item.id}"
     Rails.logger.debug "File attached?: #{content_item.file.attached?}"
 
-    if Rails.env.test?
-      url = "http://test.host/test/file/url"
-    elsif content_item.file.attached?
-      url = Rails.application.routes.url_helpers.rails_blob_url(content_item.file, only_path: false, host: request.base_url)
-    else
-      url = nil
-    end
+    url = if Rails.env.test?
+            "http://test.host/test/file/url"
+          elsif content_item.file.attached?
+            Rails.application.routes.url_helpers.rails_blob_url(
+              content_item.file,
+              only_path: false,
+              host: request.base_url
+            )
+          end
 
-    Rails.logger.debug "Generated file URL: #{url}"
+    Rails.logger.debug "Generated file URL: #{url || 'nil'}"
     url
   end
 
@@ -171,7 +199,12 @@ class ContentItemsController < ApplicationController
 
   # Use callbacks to share common setup or constraints between actions.
   def set_content_item
-    @content_item = ContentItem.find_by(id: params[:id])
+    Rails.logger.debug "Attempting to find ContentItem with id: #{params[:id]}"
+    @content_item = ContentItem.find(params[:id])
+    Rails.logger.debug "Result of find: #{@content_item.inspect}"
+  rescue ActiveRecord::RecordNotFound
+    Rails.logger.error "ContentItem with id #{params[:id]} not found"
+    render json: { error: 'Content item not found' }, status: :not_found
   end
 
   # Only allow a list of trusted parameters through.
