@@ -41,16 +41,13 @@ class ContentItemsController < ApplicationController
     ActiveRecord::Base.transaction do
       if @content_item.save
         Rails.logger.debug "Content item saved successfully: #{@content_item.inspect}"
-        if @content_item.is_a?(Image) && params[:content_item][:file].present?
-          attach_file_to_image(params[:content_item][:file])
+        if content_item_params[:file].present?
+          file = content_item_params[:file]
+          @content_item.file.attach(io: file.tempfile, filename: file.original_filename, content_type: file.content_type)
         end
 
         response_data = @content_item.as_json.merge(type: @content_item.class.name)
-        if @content_item.is_a?(Image)
-          file_url = file_url_for(@content_item)
-          Rails.logger.debug "Generated file_url for Image: #{file_url}"
-          response_data[:file_url] = file_url
-        end
+        response_data[:file_url] = file_url_for(@content_item) if @content_item.is_a?(Image)
         Rails.logger.debug "Final response_data: #{response_data.inspect}"
 
         Rails.logger.debug "Rendering response with status :created"
@@ -70,28 +67,6 @@ class ContentItemsController < ApplicationController
   end
 
   private
-
-  def attach_file_to_image(file_param)
-    if file_param.is_a?(ActionDispatch::Http::UploadedFile)
-      @content_item.file.attach(file_param)
-    elsif file_param.is_a?(Hash) && file_param[:tempfile].present?
-      @content_item.file.attach(
-        io: file_param[:tempfile],
-        filename: file_param[:original_filename],
-        content_type: file_param[:content_type]
-      )
-    else
-      Rails.logger.error "Invalid file parameter type: #{file_param.class}"
-      raise ArgumentError, "Invalid file parameter"
-    end
-    @content_item.save!
-    Rails.logger.debug "File attached successfully: #{@content_item.file.attached?}"
-    Rails.logger.debug "Attached file details: #{@content_item.file.blob.inspect}"
-  rescue StandardError => e
-    Rails.logger.error "Error attaching file: #{e.message}"
-    Rails.logger.error e.backtrace.join("\n")
-    raise ActiveRecord::Rollback
-  end
 
   private
 
@@ -137,15 +112,11 @@ class ContentItemsController < ApplicationController
 
   # Only allow a list of trusted parameters through.
   def content_item_params
-    params.require(:content_item).permit(:type, :title, :url, :content, :description, :thumbnail_url, file: {})
+    params.require(:content_item).permit(:type, :title, :url, :content, :description, :thumbnail_url, :file)
   end
 
   def file_url_for(content_item)
-    Rails.logger.debug "Generating file_url for content_item: #{content_item.inspect}"
     return nil unless content_item.is_a?(Image) && content_item.file.attached?
-
-    url = Rails.application.routes.url_helpers.rails_blob_url(content_item.file, only_path: false, host: request.base_url)
-    Rails.logger.debug "Generated file_url: #{url}"
-    url
+    Rails.application.routes.url_helpers.rails_blob_url(content_item.file, only_path: false, host: request.base_url)
   end
 end
