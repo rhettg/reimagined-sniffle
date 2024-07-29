@@ -28,6 +28,8 @@ class ContentItemsController < ApplicationController
     Rails.logger.debug "Entering create action"
     Rails.logger.debug "Incoming parameters: #{params.inspect}"
     Rails.logger.debug "Content item params: #{content_item_params.inspect}"
+    Rails.logger.debug "Type parameter: #{content_item_params[:type]}"
+    Rails.logger.debug "Available content item types: #{ContentItem.descendants.map(&:name)}"
 
     begin
       content_item_class = content_item_params[:type].constantize
@@ -67,17 +69,25 @@ class ContentItemsController < ApplicationController
       end
     rescue NameError => e
       Rails.logger.error "NameError in create action: #{e.message}"
-      render json: { error: "Invalid content item type" }, status: :unprocessable_entity
+      Rails.logger.error "Backtrace: #{e.backtrace.join("\n")}"
+      render json: { error: "Invalid content item type", details: e.message }, status: :unprocessable_entity
     rescue ActiveRecord::RecordInvalid => e
       Rails.logger.error "Validation error in create action: #{e.message}"
+      Rails.logger.error "Backtrace: #{e.backtrace.join("\n")}"
       render json: { errors: e.record.errors }, status: :unprocessable_entity
     rescue StandardError => e
       Rails.logger.error "Error in create action: #{e.message}"
-      Rails.logger.error e.backtrace.join("\n")
+      Rails.logger.error "Backtrace: #{e.backtrace.join("\n")}"
       render json: { error: "An error occurred while creating the content item" }, status: :internal_server_error
     ensure
       Rails.logger.debug "Exiting create action"
+      Rails.logger.debug "Final content item state: #{@content_item.inspect}"
     end
+  end
+
+  # Add image_url method that delegates to file_url_for
+  def image_url(content_item)
+    file_url_for(content_item)
   end
 
   private
