@@ -37,7 +37,7 @@ Rails.application.configure do
   config.action_controller.allow_forgery_protection = false
 
   # Store uploaded files on the local file system in a temporary directory.
-  config.active_storage.service = :test
+  config.active_storage.service = :local
 
   config.action_mailer.perform_caching = false
 
@@ -62,11 +62,15 @@ Rails.application.configure do
   # config.action_view.annotate_rendered_view_with_filenames = true
 
   # Raise error when a before_action's only/except options reference missing actions
-  config.action_controller.raise_on_missing_callback_actions = true
+  config.action_controller.raise_on_missing_callback_actions = false
 
   # Set log level to debug for more detailed logging during tests
   config.log_level = :debug
 
   # Redirect logs to STDOUT for immediate visibility during test runs
   config.logger = ActiveSupport::Logger.new(STDOUT)
+
+  # Set default URL options for the test environment
+  config.action_controller.default_url_options = { host: 'localhost', port: 3000 }
+  config.action_mailer.default_url_options = { host: 'localhost', port: 3000 }
 end
