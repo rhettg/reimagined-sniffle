@@ -106,17 +106,12 @@ class ContentItemsController < ApplicationController
   end
 
   def file_url(content_item)
-    if content_item.respond_to?(:file)
-      if content_item.file.attached?
-        url = Rails.application.routes.url_helpers.rails_blob_url(content_item.file, only_path: false, host: default_url_options[:host])
-        Rails.logger.debug "Generated file_url for content_item #{content_item.id}: #{url}"
-        url
-      else
-        Rails.logger.debug "File not attached for content_item: #{content_item.id}"
-        nil
-      end
+    if content_item.respond_to?(:file) && content_item.file.attached?
+      url = Rails.application.routes.url_helpers.rails_blob_path(content_item.file, only_path: false, host: default_url_options[:host], disposition: :attachment)
+      Rails.logger.debug "Generated file_url for content_item #{content_item.id}: #{url}"
+      url
     else
-      Rails.logger.debug "Content item #{content_item.id} does not respond to :file"
+      Rails.logger.debug "File not attached or content item does not respond to :file for content_item: #{content_item.id}"
       nil
     end
   end
