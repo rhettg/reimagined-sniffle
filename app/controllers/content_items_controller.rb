@@ -38,16 +38,31 @@ class ContentItemsController < ApplicationController
 
     @content_item = content_item_class.new(content_item_params.except(:type, :file))
 
-    if content_item_params[:file].present? && @content_item.respond_to?(:file)
-      @content_item.file.attach(content_item_params[:file])
+    if content_item_params[:file].present?
+      begin
+        @content_item.file.attach(content_item_params[:file])
+        if @content_item.file.attached?
+          Rails.logger.debug "File attached successfully for content_item: #{@content_item.id}"
+        else
+          Rails.logger.error "File attachment failed for content_item: #{@content_item.id}"
+          render json: { error: "File attachment failed" }, status: :unprocessable_entity
+          return
+        end
+      rescue StandardError => e
+        Rails.logger.error "File attachment failed for content_item: #{@content_item.id}. Error: #{e.message}"
+        render json: { error: "File attachment failed" }, status: :unprocessable_entity
+        return
+      end
     end
 
     if @content_item.save
-      render json: @content_item.as_json.merge(
+      response_json = @content_item.as_json.merge(
         type: @content_item.class.name,
         file_url: file_url(@content_item),
         image_url: image_url(@content_item)
-      ), status: :created, location: @content_item
+      )
+      Rails.logger.debug "Response JSON for content_item #{@content_item.id}: #{response_json.inspect}"
+      render json: response_json, status: :created, location: @content_item
     else
       render json: { errors: @content_item.errors }, status: :unprocessable_entity
     end
@@ -56,8 +71,15 @@ class ContentItemsController < ApplicationController
   # PATCH/PUT /content_items/1
   def update
     if @content_item.update(content_item_params.except(:type, :file))
-      if content_item_params[:file].present? && @content_item.respond_to?(:file)
-        @content_item.file.attach(content_item_params[:file])
+      if content_item_params[:file].present?
+        begin
+          @content_item.file.attach(content_item_params[:file])
+          Rails.logger.debug "File updated successfully for content_item: #{@content_item.id}"
+        rescue StandardError => e
+          Rails.logger.error "File update failed for content_item: #{@content_item.id}. Error: #{e.message}"
+          render json: { error: "File update failed" }, status: :unprocessable_entity
+          return
+        end
       end
 
       render json: @content_item.as_json.merge(
@@ -79,6 +101,26 @@ class ContentItemsController < ApplicationController
     end
   end
 
+  def image_url(content_item)
+    file_url(content_item)
+  end
+
+  def file_url(content_item)
+    if content_item.respond_to?(:file)
+      if content_item.file.attached?
+        url = Rails.application.routes.url_helpers.rails_blob_url(content_item.file, only_path: false, host: default_url_options[:host])
+        Rails.logger.debug "Generated file_url for content_item #{content_item.id}: #{url}"
+        url
+      else
+        Rails.logger.debug "File not attached for content_item: #{content_item.id}"
+        nil
+      end
+    else
+      Rails.logger.debug "Content item #{content_item.id} does not respond to :file"
+      nil
+    end
+  end
+
   private
 
   # Use callbacks to share common setup or constraints between actions.
@@ -93,14 +135,5 @@ class ContentItemsController < ApplicationController
 
   def default_url_options
     { host: Rails.application.config.action_mailer.default_url_options&.fetch(:host, 'localhost:3000') }
-  end
-
-  def image_url(content_item)
-    file_url(content_item)
-  end
-
-  def file_url(content_item)
-    return nil unless content_item.respond_to?(:file) && content_item.file.attached?
-    Rails.application.routes.url_helpers.rails_blob_url(content_item.file, only_path: false, host: default_url_options[:host])
   end
 end
