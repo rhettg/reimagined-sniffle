@@ -38,28 +38,21 @@ class ContentItemsController < ApplicationController
     @content_item = content_item_class.new(content_item_params.except(:type, :file))
     Rails.logger.debug "New content item: #{@content_item.inspect}"
 
-    if @content_item.save
-      Rails.logger.debug "Content item saved successfully: #{@content_item.inspect}"
-      if @content_item.is_a?(Image) && params[:content_item][:file].present?
-        begin
-          @content_item.file.attach(params[:content_item][:file])
-          @content_item.save!
-          Rails.logger.debug "File attached successfully: #{@content_item.file.attached?}"
-          Rails.logger.debug "Attached file details: #{@content_item.file.blob.inspect}"
-        rescue => e
-          Rails.logger.error "Error attaching file: #{e.message}"
-          Rails.logger.error e.backtrace.join("\n")
-          return render json: { error: "Failed to attach file" }, status: :unprocessable_entity
+    ActiveRecord::Base.transaction do
+      if @content_item.save
+        Rails.logger.debug "Content item saved successfully: #{@content_item.inspect}"
+        if @content_item.is_a?(Image) && params[:content_item][:file].present?
+          attach_file_to_image
         end
-      end
 
-      render json: @content_item.as_json.merge(
-        type: @content_item.type,
-        file_url: @content_item.file_url
-      ), status: :created
-    else
-      Rails.logger.error "Failed to save content item: #{@content_item.errors.full_messages}"
-      render json: { errors: @content_item.errors }, status: :unprocessable_entity
+        response_json = @content_item.as_json.merge(type: @content_item.type)
+        response_json[:file_url] = @content_item.file_url if @content_item.is_a?(Image)
+
+        render json: response_json, status: :created
+      else
+        Rails.logger.error "Failed to save content item: #{@content_item.errors.full_messages}"
+        render json: { errors: @content_item.errors }, status: :unprocessable_entity
+      end
     end
   rescue NameError => e
     Rails.logger.error "Invalid content item type: #{e.message}"
@@ -71,6 +64,17 @@ class ContentItemsController < ApplicationController
   end
 
   private
+
+  def attach_file_to_image
+    @content_item.file.attach(params[:content_item][:file])
+    @content_item.save!
+    Rails.logger.debug "File attached successfully: #{@content_item.file.attached?}"
+    Rails.logger.debug "Attached file details: #{@content_item.file.blob.inspect}"
+  rescue StandardError => e
+    Rails.logger.error "Error attaching file: #{e.message}"
+    Rails.logger.error e.backtrace.join("\n")
+    raise ActiveRecord::Rollback
+  end
 
   # PATCH/PUT /content_items/1
   def update
@@ -96,6 +100,8 @@ class ContentItemsController < ApplicationController
       render json: { errors: ['Cannot delete content item because it is referenced by other records.'] }, status: :unprocessable_entity
     end
   end
+
+  private
 
   # Use callbacks to share common setup or constraints between actions.
   def set_content_item
