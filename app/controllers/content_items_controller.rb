@@ -25,6 +25,7 @@ class ContentItemsController < ApplicationController
 
   # POST /content_items
   def create
+    Rails.logger.debug "Available methods: #{self.methods}"
     Rails.logger.debug "Entering create action"
     Rails.logger.debug "Incoming parameters: #{params.inspect}"
     Rails.logger.debug "Content item params: #{content_item_params.inspect}"
@@ -136,6 +137,15 @@ class ContentItemsController < ApplicationController
     end
   end
 
+  public
+
+  def image_url(content_item)
+    Rails.logger.debug "Entering image_url method for content_item: #{content_item.inspect}"
+    result = file_url_for(content_item)
+    Rails.logger.debug "Exiting image_url method. Result: #{result}"
+    result
+  end
+
   private
 
   def attach_file
@@ -191,9 +201,5 @@ class ContentItemsController < ApplicationController
     else
       request.base_url || 'http://localhost:3000'
     end
-  end
-
-  def image_url(content_item)
-    file_url_for(content_item)
   end
 end
