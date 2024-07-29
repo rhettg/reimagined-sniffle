@@ -14,6 +14,6 @@ class Image < ContentItem
   private
 
   def default_url_options
-    { host: Rails.application.config.action_mailer.default_url_options[:host] || 'localhost:3000' }
+    { host: Rails.application.config.action_mailer.default_url_options&.fetch(:host, 'localhost:3000') }
   end
 end
