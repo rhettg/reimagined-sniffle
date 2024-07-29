@@ -14,7 +14,7 @@ class ContentItemsController < ApplicationController
   def show
     render json: @content_item.as_json.merge(
       type: @content_item.class.name,
-      file_url: @content_item.is_a?(Image) ? @content_item.file_url : nil
+      file_url: file_url_for(@content_item)
     ), status: :ok
   end
 
@@ -28,49 +28,30 @@ class ContentItemsController < ApplicationController
 
   # POST /content_items
   def create
-    Rails.logger.debug "Raw params: #{params.inspect}"
+    Rails.logger.debug "Params: #{params.inspect}"
     Rails.logger.debug "Content item params: #{content_item_params.inspect}"
-    Rails.logger.debug "File param: #{params.dig(:content_item, :file).inspect}"
 
     content_item_class = content_item_params[:type].constantize
-    Rails.logger.debug "Content item class: #{content_item_class}"
-
     @content_item = content_item_class.new(content_item_params.except(:type, :file))
-    Rails.logger.debug "New content item: #{@content_item.inspect}"
 
     ActiveRecord::Base.transaction do
       if @content_item.save
-        Rails.logger.debug "Content item saved successfully: #{@content_item.inspect}"
         if content_item_params[:file].present?
-          file = content_item_params[:file]
-          @content_item.file.attach(io: file.tempfile, filename: file.original_filename, content_type: file.content_type)
+          @content_item.file.attach(content_item_params[:file])
         end
-
-        response_data = @content_item.as_json.merge(type: @content_item.class.name)
-        response_data[:file_url] = file_url_for(@content_item) if @content_item.is_a?(Image)
-        Rails.logger.debug "Final response_data: #{response_data.inspect}"
-
-        Rails.logger.debug "Rendering response with status :created"
+        response_data = build_response_data
         render json: response_data, status: :created, location: @content_item
       else
-        Rails.logger.error "Failed to save content item: #{@content_item.errors.full_messages}"
         render json: { errors: @content_item.errors }, status: :unprocessable_entity
       end
     end
   rescue NameError => e
-    Rails.logger.error "Invalid content item type: #{e.message}"
     render json: { error: "Invalid content item type", details: e.message }, status: :unprocessable_entity
   rescue StandardError => e
     Rails.logger.error "Error creating content item: #{e.message}"
     Rails.logger.error e.backtrace.join("\n")
-    render json: { error: "An error occurred while creating the content item: #{e.message}" }, status: :internal_server_error
+    render json: { error: "An error occurred while creating the content item" }, status: :internal_server_error
   end
-
-  private
-
-  private
-
-
 
   # PATCH/PUT /content_items/1
   def update
@@ -79,10 +60,8 @@ class ContentItemsController < ApplicationController
         @content_item.file.attach(content_item_params[:file])
       end
 
-      render json: @content_item.as_json.merge(
-        type: @content_item.type,
-        file_url: @content_item.is_a?(Image) ? @content_item.file_url : nil
-      ), status: :ok
+      response_data = build_response_data
+      render json: response_data, status: :ok
     else
       render json: { errors: @content_item.errors }, status: :unprocessable_entity
     end
@@ -97,7 +76,24 @@ class ContentItemsController < ApplicationController
     end
   end
 
+  def file_url_for(content_item)
+    Rails.logger.debug "Checking file attachment for content_item: #{content_item.inspect}"
+    return nil unless content_item.file.attached?
+    Rails.logger.debug "File is attached"
+    url = url_for(content_item.file)
+    Rails.logger.debug "Generated URL: #{url}"
+    url
+  end
+
   private
+
+  def build_response_data
+    response_data = @content_item.as_json.merge(type: @content_item.class.name)
+    file_url = file_url_for(@content_item)
+    Rails.logger.debug "Generated file_url: #{file_url.inspect}"
+    response_data[:file_url] = file_url if file_url
+    response_data
+  end
 
   # Use callbacks to share common setup or constraints between actions.
   def set_content_item
@@ -113,10 +109,5 @@ class ContentItemsController < ApplicationController
   # Only allow a list of trusted parameters through.
   def content_item_params
     params.require(:content_item).permit(:type, :title, :url, :content, :description, :thumbnail_url, :file)
-  end
-
-  def file_url_for(content_item)
-    return nil unless content_item.is_a?(Image) && content_item.file.attached?
-    Rails.application.routes.url_helpers.rails_blob_url(content_item.file, only_path: false, host: request.base_url)
   end
 end
