@@ -59,7 +59,7 @@ class ContentItemsController < ApplicationController
       response_json = @content_item.as_json.merge(
         type: @content_item.class.name,
         file_url: file_url(@content_item),
-        image_url: image_url(@content_item)
+        image_url: file_url(@content_item)
       )
       Rails.logger.debug "Response JSON for content_item #{@content_item.id}: #{response_json.inspect}"
       render json: response_json, status: :created, location: @content_item
@@ -107,7 +107,7 @@ class ContentItemsController < ApplicationController
 
   def file_url(content_item)
     if content_item.respond_to?(:file) && content_item.file.attached?
-      url = Rails.application.routes.url_helpers.rails_blob_url(content_item.file, only_path: false, host: request.base_url)
+      url = rails_blob_url(content_item.file, only_path: false)
       Rails.logger.debug "Generated file_url for content_item #{content_item.id}: #{url}"
       url
     else
@@ -129,6 +129,6 @@ class ContentItemsController < ApplicationController
   end
 
   def default_url_options
-    { host: request.base_url || 'localhost:3000' }
+    { host: request.base_url || 'http://localhost:3000' }
   end
 end
