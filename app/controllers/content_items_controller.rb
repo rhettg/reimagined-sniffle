@@ -12,7 +12,10 @@ class ContentItemsController < ApplicationController
 
   # GET /content_items/1
   def show
-    render json: @content_item, status: :ok
+    render json: @content_item.as_json.merge(
+      type: @content_item.class.name,
+      file_url: @content_item.is_a?(Image) ? @content_item.file_url : nil
+    ), status: :ok
   end
 
   # GET /content_items/new
@@ -78,7 +81,7 @@ class ContentItemsController < ApplicationController
 
       render json: @content_item.as_json.merge(
         type: @content_item.type,
-        file_url: file_url_for(@content_item)
+        file_url: @content_item.is_a?(Image) ? @content_item.file_url : nil
       ), status: :ok
     else
       render json: { errors: @content_item.errors }, status: :unprocessable_entity
@@ -93,9 +96,6 @@ class ContentItemsController < ApplicationController
       render json: { errors: ['Cannot delete content item because it is referenced by other records.'] }, status: :unprocessable_entity
     end
   end
-
-  # This method has been removed as it's no longer needed.
-  # The file_url is now generated in the Image model.
 
   # Use callbacks to share common setup or constraints between actions.
   def set_content_item
@@ -112,9 +112,4 @@ class ContentItemsController < ApplicationController
   def content_item_params
     params.require(:content_item).permit(:type, :title, :url, :content, :description, :thumbnail_url, :file)
   end
-
-
-
-  # These methods have been moved to ApplicationController
-
 end
