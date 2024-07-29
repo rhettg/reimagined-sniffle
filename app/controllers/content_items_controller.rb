@@ -7,15 +7,13 @@ class ContentItemsController < ApplicationController
   # GET /content_items
   def index
     @content_items = ContentItem.all
-    render json: @content_items.map { |item| item.as_json.merge(type: item.type) }
+    render json: @content_items.map { |item| item.as_json(methods: [:file_url]).merge(type: item.type) }
   end
 
   # GET /content_items/1
   def show
-    render json: @content_item.as_json.merge(
-      type: @content_item.class.name,
-      file_url: file_url_for(@content_item),
-      link_url: link_url(@content_item)
+    render json: @content_item.as_json(methods: [:file_url]).merge(
+      type: @content_item.class.name
     ), status: :ok
   end
 
@@ -29,37 +27,36 @@ class ContentItemsController < ApplicationController
 
   # POST /content_items
   def create
-    content_item_class = content_item_params[:type].constantize
-    @content_item = content_item_class.new(content_item_params.except(:type))
+    content_item_class = ContentItem.subclasses.find { |klass| klass.name == content_item_params[:type] }
+
+    if content_item_class.nil?
+      render json: { error: "Invalid content item type" }, status: :unprocessable_entity
+      return
+    end
+
+    @content_item = content_item_class.new(content_item_params.except(:type, :file))
+
+    if content_item_params[:file].present? && @content_item.respond_to?(:file)
+      @content_item.file.attach(content_item_params[:file])
+    end
 
     if @content_item.save
-      if params[:file].present? && @content_item.respond_to?(:file)
-        @content_item.file.attach(params[:file])
-      end
-
-      render json: @content_item.as_json.merge(
-        type: @content_item.class.name,
-        file_url: file_url_for(@content_item),
-        link_url: link_url(@content_item)
-      ), status: :created, location: @content_item
+      render json: @content_item.as_json(methods: [:file_url]).merge(type: @content_item.class.name),
+             status: :created, location: @content_item
     else
       render json: { errors: @content_item.errors }, status: :unprocessable_entity
     end
-  rescue NameError => e
-    render json: { error: "Invalid content item type" }, status: :unprocessable_entity
   end
 
   # PATCH/PUT /content_items/1
   def update
-    if @content_item.update(content_item_params.except(:type))
-      if params[:file].present? && @content_item.respond_to?(:file)
-        @content_item.file.attach(params[:file])
+    if @content_item.update(content_item_params.except(:type, :file))
+      if content_item_params[:file].present? && @content_item.respond_to?(:file)
+        @content_item.file.attach(content_item_params[:file])
       end
 
-      render json: @content_item.as_json.merge(
-        type: @content_item.class.name,
-        file_url: file_url_for(@content_item),
-        link_url: link_url(@content_item)
+      render json: @content_item.as_json(methods: [:file_url]).merge(
+        type: @content_item.class.name
       ), status: :ok
     else
       render json: { errors: @content_item.errors }, status: :unprocessable_entity
@@ -73,15 +70,6 @@ class ContentItemsController < ApplicationController
     else
       render json: { errors: ['Cannot delete content item because it is referenced by other records.'] }, status: :unprocessable_entity
     end
-  end
-
-  def file_url_for(content_item)
-    return nil unless content_item.respond_to?(:file) && content_item.file.attached?
-    Rails.application.routes.url_helpers.rails_blob_url(content_item.file, only_path: false, host: default_url_options[:host])
-  end
-
-  def link_url(content_item)
-    content_item.url if content_item.is_a?(Link)
   end
 
   private
