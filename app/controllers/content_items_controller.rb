@@ -107,7 +107,7 @@ class ContentItemsController < ApplicationController
 
   def file_url(content_item)
     if content_item.respond_to?(:file) && content_item.file.attached?
-      url = Rails.application.routes.url_helpers.rails_blob_path(content_item.file, only_path: false, host: default_url_options[:host], disposition: :attachment)
+      url = Rails.application.routes.url_helpers.rails_blob_url(content_item.file, only_path: false, host: request.base_url)
       Rails.logger.debug "Generated file_url for content_item #{content_item.id}: #{url}"
       url
     else
@@ -129,6 +129,6 @@ class ContentItemsController < ApplicationController
   end
 
   def default_url_options
-    { host: Rails.application.config.action_mailer.default_url_options&.fetch(:host, 'localhost:3000') }
+    { host: request.base_url || 'localhost:3000' }
   end
 end

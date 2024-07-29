@@ -118,18 +118,14 @@ class ContentItemsControllerTest < ActionDispatch::IntegrationTest
       post content_items_url, params: {
         content_item: {
           type: 'Image',
-          title: 'Test Image with File'
-        },
-        file: file
+          title: 'Test Image with File',
+          file: file
+        }
       }, as: :multipart
     end
 
-    puts "Request parameters: #{request.params.inspect}"
-    puts "Request content type: #{request.content_type}"
-    puts "Response body: #{response.body}"
-
     assert_response :created
-    json_response = JSON.parse(@response.body)
+    json_response = JSON.parse(response.body)
     assert_equal 'Image', json_response['type']
     assert_equal 'Test Image with File', json_response['title']
     assert_not_nil json_response['file_url'], "file_url should be present in the response"
