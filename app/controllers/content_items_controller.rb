@@ -32,19 +32,12 @@ class ContentItemsController < ApplicationController
     content_item_class = content_item_params[:type].constantize
     Rails.logger.debug "Content item class: #{content_item_class}"
 
-    @content_item = content_item_class.new(content_item_params.except(:type, :file))
+    @content_item = content_item_class.new(content_item_params.except(:type))
     Rails.logger.debug "New content item: #{@content_item.inspect}"
 
-    if content_item_params[:file].present?
-      file = content_item_params[:file]
-      if file.is_a?(ActionDispatch::Http::UploadedFile)
-        @content_item.file.attach(file)
-      else
-        render json: { error: "Invalid file format" }, status: :unprocessable_entity
-        return
-      end
+    if @content_item.file.attached?
       Rails.logger.debug "File attached: #{@content_item.file.attached?}"
-      Rails.logger.debug "Attached file details: #{@content_item.file.blob.inspect}" if @content_item.file.attached?
+      Rails.logger.debug "Attached file details: #{@content_item.file.blob.inspect}"
     end
 
     if @content_item.save
@@ -176,7 +169,7 @@ class ContentItemsController < ApplicationController
 
   # Only allow a list of trusted parameters through.
   def content_item_params
-    params.require(:content_item).permit(:type, :title, :url, :content, :file)
+    params.require(:content_item).permit(:type, :title, :url, :content, :file, :description, :thumbnail_url)
   end
 
   def determine_host
