@@ -12,7 +12,7 @@ class ContentItemsController < ApplicationController
 
   # GET /content_items/1
   def show
-    render json: @content_item.as_json.merge(type: @content_item.type, file_url: file_url_for(@content_item)), status: :ok
+    render json: @content_item, status: :ok
   end
 
   # GET /content_items/new
@@ -41,6 +41,8 @@ class ContentItemsController < ApplicationController
       ActiveRecord::Base.transaction do
         if @content_item.save
           Rails.logger.debug "Content item saved successfully: #{@content_item.inspect}"
+          Rails.logger.debug "Content item after save: #{@content_item.inspect}"
+          Rails.logger.debug "File URL: #{file_url_for(@content_item)}"
 
           if content_item_params[:file].present?
             Rails.logger.debug "File present in params: #{content_item_params[:file].inspect}"
@@ -58,6 +60,7 @@ class ContentItemsController < ApplicationController
             file_url: file_url
           )
           Rails.logger.debug "Response body: #{response_body}"
+          Rails.logger.debug "Response body before rendering: #{response_body.inspect}"
 
           render json: response_body, status: :created, location: @content_item
           Rails.logger.debug "Response sent with status :created"
@@ -85,21 +88,6 @@ class ContentItemsController < ApplicationController
     end
   end
 
-  # Add image_url method that delegates to file_url_for
-  def image_url(content_item)
-    file_url_for(content_item)
-  end
-
-  private
-
-  def attach_file
-    Rails.logger.debug "File present in params: #{content_item_params[:file].inspect}"
-    attachment_result = @content_item.file.attach(content_item_params[:file])
-    Rails.logger.debug "File attachment result: #{attachment_result}"
-    @content_item.save
-    Rails.logger.debug "Content item saved after file attachment: #{@content_item.inspect}"
-  end
-
   # PATCH/PUT /content_items/1
   def update
     if @content_item.update(content_item_params.except(:file))
@@ -125,7 +113,38 @@ class ContentItemsController < ApplicationController
     end
   end
 
+  # Generate file URL if file is attached
+  def file_url_for(content_item)
+    Rails.logger.debug "Calling file_url_for with content_item: #{content_item.inspect}"
+    Rails.logger.debug "Entering file_url_for method for content_item: #{content_item.inspect}"
+    Rails.logger.debug "File attached?: #{content_item.file.attached?}"
+    return nil unless content_item.file.attached?
+
+    begin
+      host = determine_host
+      Rails.logger.debug "Using host for URL generation: #{host}"
+      url = Rails.application.routes.url_helpers.url_for(content_item.file.blob)
+      Rails.logger.debug "Generated file URL: #{url}"
+      Rails.logger.debug "File attachment details: #{content_item.file.attachment.inspect}"
+      url
+    rescue StandardError => e
+      Rails.logger.error "Error in file_url_for method: #{e.message}"
+      Rails.logger.error "Full error details: #{e.full_message}"
+      Rails.logger.error e.backtrace.join("\n")
+      report_error(e)
+      nil
+    end
+  end
+
   private
+
+  def attach_file
+    Rails.logger.debug "File present in params: #{content_item_params[:file].inspect}"
+    attachment_result = @content_item.file.attach(content_item_params[:file])
+    Rails.logger.debug "File attachment result: #{attachment_result}"
+    @content_item.save
+    Rails.logger.debug "Content item saved after file attachment: #{@content_item.inspect}"
+  end
 
   # Use callbacks to share common setup or constraints between actions.
   def set_content_item
@@ -145,36 +164,11 @@ class ContentItemsController < ApplicationController
     permitted_params
   end
 
-  # Generate file URL if file is attached
-  def file_url_for(content_item)
-    Rails.logger.debug "Entering file_url_for method for content_item: #{content_item.inspect}"
-    Rails.logger.debug "File attached?: #{content_item.file.attached?}"
-    return nil unless content_item.file.attached?
-
-    begin
-      host = determine_host
-      Rails.logger.debug "Using host for URL generation: #{host}"
-
-      url = Rails.application.routes.url_helpers.rails_blob_url(content_item.file, only_path: false, host: host)
-
-      Rails.logger.debug "Generated URL components: #{URI.parse(url).to_h}"
-      Rails.logger.debug "Generated file URL: #{url}"
-      Rails.logger.debug "File attachment details: #{content_item.file.attachment.inspect}"
-      url
-    rescue StandardError => e
-      Rails.logger.error "Error in file_url_for method: #{e.message}"
-      Rails.logger.error "Full error details: #{e.full_message}"
-      Rails.logger.error e.backtrace.join("\n")
-      report_error(e)
-      nil
-    end
-  end
-
   def determine_host
-    default_url_options[:host] ||
-      Rails.application.routes.default_url_options[:host] ||
+    Rails.application.routes.default_url_options[:host] ||
       Rails.application.config.action_controller.default_url_options[:host] ||
-      request.base_url ||
+      (request.present? ? request.base_url : nil) ||
+      ENV['APPLICATION_HOST'] ||
       'localhost:3000'
   end
 
@@ -192,8 +186,14 @@ class ContentItemsController < ApplicationController
   def determine_host
     if Rails.env.production?
       ENV['APPLICATION_HOST'] || raise("APPLICATION_HOST environment variable is not set")
+    elsif Rails.env.test?
+      'http://localhost:3000'
     else
       request.base_url || 'http://localhost:3000'
     end
+  end
+
+  def image_url(content_item)
+    file_url_for(content_item)
   end
 end
